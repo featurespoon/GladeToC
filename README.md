@@ -28,6 +28,9 @@ Miscellaneous
 
 GtkListStore, GtkTreeStore, GtkTextBuffer, GtkAccelGroup, GtkAdjustment, GtkEntryCompletion, GtkFileFilter
 
+Coverage of the properties in Glade's Common tab (common to most widgets) is complete.
+
+
 
 The project can be built using cmake.  This produces both a command line version and a Gui version of g2c.
 
