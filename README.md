@@ -6,20 +6,26 @@ The goal of this project is to take XML files produced by using Glade, a user in
 Glade is available in Linux distributions and also on Windows with Msys64 and Mingw64. When built, this program will run on Linux and Windows.
 
 Widget coverage is currently as follows:
+
 Top Levels
+
 GtkWindow, GtkOffscreenWindow, GtkDialog, GtkAboutDialog, GtkFileChooserDialog, GtkColorChooserDialog, GtkFontChooserDialog,
 GtkMessageDialog, GtkAssistant.
 
 Containers
+
 GtkBox, GtkGrid, GtkNotebook, GtkFrame, GtkAspectFrame, GtkListBox, GtkOverlay, GtkMenuBar, GtkToolbar, GtkToolPalette, GtkPaned, GtkButtonBox, GtkLayout, GtkFixed, GtkEventBox, GtkExpander, GtkViewport, GtkScrolledWindow, GtkAlignment, GtkRevealer, GtkSearchBar, GtkHeaderBar, GtkStack, GtkPopupMenu, GtkPopover, GtkActionBar
 
 Controls
+
 GtkButton, GtkEntry, GtkSearchEntry, GtkSpinButton, GtkToggleButton, GtkCheckButton, GtkRadioButton, GtkMenuButton, GtkSwitch, GtkModelButton, GtkStackSwitcher, GtkComboBox, GtkComboBoxText, GtkFileChooserButton, GtkColorButton, GtkFontButton, GtkLinkButton, GtkScaleButton, GtkVolumeButton, GtkAppChooserButton, GtkScale, GtkScrollbar
 
 Display
+
 GtkLabel, GtkAccelLabel, GtkImage, GtkTextView, GtkTreeView (both Lists and Trees), GtkProgressBar, GtkSpinner, GtkMenu, GtkDrawingArea, GtkInfoBar
 
 Miscellaneous
+
 GtkListStore, GtkTreeStore, GtkTextBuffer, GtkAccelGroup, GtkAdjustment, GtkEntryCompletion, GtkFileFilter
 
 
