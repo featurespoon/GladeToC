@@ -11,10 +11,8 @@
 #include "g2c_helpers.h"
 #include "g2c_message.h"
 #include "g2c_doc.h"
-//#include "g2c_project.h"
 #include "g2c_widget.h"
 
-#include "config.h"
 
 #ifdef USE_GNOME
 #include <gnome.h>
@@ -22,8 +20,6 @@
 
 #define RECURSE_ALL   G_MAXINT
 #define RECURSE_NONE  0
-
-/* Uncomment this line to aid in debugging. */
 
 /******************************************************************
  **                    Function Prototypes                       **
@@ -2433,7 +2429,7 @@ output_widget_create( g2cWidget *widget,
                       if( !g_type_is_a( widget->klass, GTK_TYPE_LABEL ) )  /* i.e. widget has to be a box */
                         {
                           fprintf( file,
-                                   "\tfgtk_notebook_append_page (GTK_NOTEBOOK (gui->%s),\n"
+                                   "\tgtk_notebook_append_page (GTK_NOTEBOOK (gui->%s),\n"
                                    "\t                          GTK_WIDGET (gui->%s),\n"
                                    "\t                          GTK_WIDGET (gui->%s));\n",
                                    widget->parent->name,   /* notebook */

@@ -6,7 +6,6 @@
 #include "g2c_helpers.h"
 #include "g2c_signals.h"
 
-#include "config.h"
 
 typedef struct _GtkSignalQuery
 {

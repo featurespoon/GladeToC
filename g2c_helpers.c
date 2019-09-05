@@ -5,8 +5,6 @@
 #include <ctype.h>
 #include <gtk/gtk.h>
 
-#include "config.h"
-
 static gint anon_counter = 0;
 
 /*******************************************************************

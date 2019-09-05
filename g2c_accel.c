@@ -1,6 +1,8 @@
 #include "g2c_accel.h"
 
-#include "config.h"
+/*******************************************************************
+ **                 Accelerator Helper functions                  **
+ *******************************************************************/
 
 g2cAccel *
 g2c_accel_new( void )

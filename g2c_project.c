@@ -3,7 +3,6 @@
 #include "g2c_helpers.h"
 #include <string.h>
 
-#include "config.h"
 
 /* Helpers */
 

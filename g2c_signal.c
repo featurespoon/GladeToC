@@ -1,7 +1,9 @@
 #include "g2c_signal.h"
 #include "g2c_helpers.h"
 
-#include "config.h"
+/*******************************************************************
+ **                      Handling of Signals                      **
+ *******************************************************************/
 
 g2cSignal *
 g2c_signal_new( void )

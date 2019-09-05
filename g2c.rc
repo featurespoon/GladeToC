@@ -1,0 +1,63 @@
+/////////////////////////////////////////////////////////////////////////////
+//
+//  g2c.rc  resource script.
+//
+/////////////////////////////////////////////////////////////////////////////
+#include "windows.h"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+//
+// English (U.K.) resources
+//
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK
+#pragma code_page(1252)
+#endif //_WIN32
+//
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON1               ICON    DISCARDABLE     "chart.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,2
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080904b0"
+        BEGIN
+            VALUE "Comments", "\0"
+            VALUE "CompanyName", "Ornithade Ltd.\0"
+            VALUE "FileDescription", "Gtk Program Generator\0"
+            VALUE "FileVersion", "1, 0, 0, 1\0"
+            VALUE "InternalName", "g2cGui\0"
+            VALUE "LegalCopyright", "Copyright © 2019 Ornithade Ltd\0"
+            VALUE "LegalTrademarks", "\0"
+            VALUE "OriginalFilename", "g2cGui.exe\0"
+            VALUE "PrivateBuild", "\0"
+            VALUE "ProductName", "  g2cGui\0"
+            VALUE "ProductVersion", "1, 0, 0, 0\0"
+            VALUE "SpecialBuild", "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x809, 1200
+    END
+END

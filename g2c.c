@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-//#include "config.h"
 #include <gtk/gtk.h>
 #include "g2c_widget.h"
 #include "g2c_doc.h"
