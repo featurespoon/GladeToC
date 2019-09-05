@@ -15,7 +15,6 @@
 
 FILE          *CURRENT_FILE;
 g2cFileParser *CURRENT_SOURCE_PARSER;
-//g2cFileParser *CURRENT_PO_PARSER;
 g2cFileParser *CURRENT_MAKE_PARSER;
 g2cFileParser *CURRENT_MAIN_PARSER;
 gchar         *DIR_PREFIX;
