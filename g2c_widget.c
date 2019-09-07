@@ -58,6 +58,7 @@ void label_label_ellipsize ( g2cWidget *widget );
 void label_ellipsize ( g2cWidget *widget );
 void layout_height ( g2cWidget *widget );
 void layout_width ( g2cWidget *widget );
+void menu_bar_direction( g2cWidget *widget );
 void menu_item_use_stock ( g2cWidget *widget );
 void menu_label( g2cWidget *widget );
 void menu_item_label( g2cWidget *widget );
@@ -66,6 +67,7 @@ void message_dialog_secondary_text ( g2cWidget *widget );
 void notebook_packing( g2cWidget *widget, g2cWidget *box_widget );
 void pack_renderer( g2cWidget *widget );
 void pack_combo_box_column( g2cWidget *widget );
+void popover_submenu( g2cWidget *widget );
 void range_lower_sensitivity( g2cWidget *widget );
 void range_upper_sensitivity( g2cWidget *widget );
 void scale_value_pos( g2cWidget *widget );
@@ -117,6 +119,7 @@ void create_gtk_tree_selection( g2cWidget *widget );
 void create_gtk_scrollbar( g2cWidget *widget );
 void create_gtk_scrolled_window( g2cWidget *widget );
 void create_gtk_popover( g2cWidget *widget );
+void create_gtk_popovermenu( g2cWidget *widget );
 void create_gtk_model_button( g2cWidget *widget );
 //void create_gtk_vscale( g2cWidget *widget );
 void create_gtk_window( g2cWidget *widget );
@@ -289,7 +292,11 @@ static g2cCreateFunction create_functions[] =
       
     { "GtkPopover", NULL,
       { NULL },
-      create_gtk_popover },  
+      create_gtk_popover },
+      
+    { "GtkPopoverMenu", NULL,
+      { NULL },
+      create_gtk_popovermenu },    
 
     { "GtkPreview", "gtk_preview_new (%s)",
       { "type", NULL },
@@ -432,6 +439,7 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkBox", "can_focus"},   /* because this is a common widget property */
     { "GtkBox", "orientation" },
     { "GtkBox", "spacing" },
+    { "GtkBox", "_position" },   /*  popovermenu  */
     { "GtkButton", "label" },   /*  in button create */
     { "GtkButton", "can_focus" },  /*  widget  */
     { "GtkButton", "use_action_appearance" },  /*  deprecated  */
@@ -513,7 +521,9 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkLinkButton", "uri" },
     { "GtkLinkButton", "label" },
     { "GtkMenuBar", "shadow_type"},  // deprecated
-    { "GtkMenu", "tearoff_title"},
+    { "GtkMenuBar", "child_pack_direction" },  /* menu_bar_direction */
+    { "GtkMenu", "tearoff_state"},  // deprecated
+    { "GtkMenu", "tearoff_title"},  // deprecated
     { "GtkMenuItem", "stock_item" },
     { "GtkMenuItem", "stock_icon" },
     { "GtkMenuItem", "icon" },
@@ -670,7 +680,12 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
     { NULL },
       NULL,
-      baseline_position },   
+      baseline_position }, 
+    { "GtkBox", "_submenu",
+      NULL,
+    { NULL },
+      NULL,
+      popover_submenu },  
     { "GtkButton", "height_request",
       "\tg_object_set(G_OBJECT(gui->%s),\"height_request\", %s,NULL);\n",
       { "name", "height_request", NULL },
@@ -1451,11 +1466,23 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "vadjustment", NULL },
       NULL },
       
+    { "GtkListBoxRow", "action_name",
+      NULL,
+      {  NULL },
+      NULL,
+      attach_action },   
+      
     { "GtkMenu", "menu_type_hint",
       NULL,
       {  NULL },
       NULL,
-      menu_type_hint },    
+      menu_type_hint }, 
+      
+    { "GtkMenuBar", "pack_direction",
+       NULL,
+       {  NULL },
+       NULL,
+       menu_bar_direction},  
       
     { "GtkMenuButton", "inconsistent",
        "\tg_object_set(G_OBJECT(gui->%s),\"inconsistent\", %s, NULL);\n",
@@ -1493,8 +1520,20 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        menu_item_label}, 
       
+     { "GtkMenuItem", "action_name",
+       NULL,
+       {  NULL },
+       NULL,
+       attach_action},  
+       
+     { "GtkMenuShell", "take_focus" ,   /*  for GtkMenuBar  */
+       "\tgtk_menu_shell_set_take_focus(GTK_MENU_SHELL(gui->%s), %s);\n",
+     { "name", "take_focus", NULL },
+       NULL,
+       NULL },      
+      
      { "GtkCheckMenuItem", "right_justified",
-      "\tgtk_widget_set_halign(GTK_WIDGET(gui->%s), GTK_ALIGN_END);\n",
+      "\tgtk_widget_set_halign(GTK_WIDGET(gui->%s), GTK_ALIGN_END);\n", 
       { "name", NULL },
       NULL,
       NULL },  
@@ -1528,7 +1567,13 @@ static g2cSpecialHandler special_handlers[] =
        "\tg_object_set(G_OBJECT(gui->%s),\"use_markup\", %s, NULL);\n",
        { "name","use_markup", NULL },
        NULL,
-       NULL},    
+       NULL},  
+       
+     { "GtkModelButton", "menu_name",
+       "\tg_object_set(G_OBJECT(gui->%s),\"menu-name\", %s, NULL);\n",
+       { "name","$menu_name", NULL },
+       NULL,
+       NULL},     
        
      { "GtkPopover", "position",
        NULL,
@@ -1540,7 +1585,19 @@ static g2cSpecialHandler special_handlers[] =
        "\tgtk_popover_set_constrain_to(GTK_POPOVER(gui->%s),GTK_POPOVER_CONSTRAINT_NONE);\n",
        { "name", NULL },
        NULL,
-       NULL},  
+       NULL}, 
+       
+    { "GtkPopover", "transitions_enabled",
+       "\tgtk_popover_set_transitions_enabled(GTK_POPOVER(gui->%s),%s);\n",
+       { "name", "transitions_enabled", NULL },
+       NULL,
+       NULL}, 
+       
+    { "GtkPopover", "modal",
+       "\tgtk_popover_set_modal(GTK_POPOVER(gui->%s), %s);\n",
+       { "name","modal",  NULL },
+       NULL,
+       NULL},    
        
     { "GtkScale", "value_pos",
       NULL,
@@ -1568,7 +1625,13 @@ static g2cSpecialHandler special_handlers[] =
       "\tg_object_set(G_OBJECT(gui->%s), \"icon-size\", %s, NULL);\n",
       { "name", "icon_size", NULL },
       NULL,
-      NULL },    
+      NULL },
+      
+    { "GtkSwitch", "action_name",
+      NULL,
+      {  NULL },
+      NULL,
+      attach_action },  
       
     { "GtkViewport", "hadjustment",
       "\tgtk_scrollable_set_hadjustment (GTK_SCROLLABLE (gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
@@ -1892,6 +1955,12 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },
       
+    { "GtkStackSidebar", "stack",
+       "\tgtk_stack_sidebar_set_stack (GTK_STACK_SIDEBAR (gui->%s), GTK_STACK(gui->%s));\n",
+      { "name", "stack", NULL },
+      NULL,
+      NULL },   
+      
     { "GtkStackSwitcher", "stack",
        "\tgtk_stack_switcher_set_stack (GTK_STACK_SWITCHER (gui->%s), GTK_STACK(gui->%s));\n",
       { "name", "stack", NULL },
@@ -2192,6 +2261,8 @@ static g2cCommonParam common_params[] =
     {"inconsistent", FALSE, NULL, NULL},
     {"receives_default",TRUE,  NULL, NULL},
 //    {"has_default",FALSE,  NULL, NULL},
+    {"rect_anchor_dx", FALSE,  NULL, NULL},
+    {"rect_anchor_dy", FALSE,  NULL, NULL},
     {"can_default",TRUE,  NULL, NULL}, 
     {"no_show_all", TRUE, NULL, NULL},
     {"opacity", TRUE,  NULL, NULL},
@@ -3333,6 +3404,40 @@ g2cWidget *column_widget = NULL;
            
 }
 
+void popover_submenu( g2cWidget *widget )
+{
+gchar *submenu = g2c_widget_get_property( widget, "_submenu" );
+gchar *popovermenu = widget->parent->name;
+gchar *position = g2c_widget_get_property( widget, "_position" );
+
+    fprintf( CURRENT_FILE,
+           "\tg_value_init (&%s_submenu, G_TYPE_STRING);\n",
+            widget->name);
+    fprintf( CURRENT_FILE,
+           "\tg_value_set_string(&%s_submenu, \"%s\");\n",
+           widget->name, submenu); 
+    fprintf( CURRENT_FILE,
+           "\tgtk_container_child_set_property(GTK_CONTAINER (gui->%s),\n",
+           popovermenu); 
+    fprintf( CURRENT_FILE,
+           "\t            GTK_WIDGET (gui->%s), \"submenu\", (const GValue *) &%s_submenu);\n",
+           widget->name,widget->name); 
+    if (position != NULL) {
+        fprintf( CURRENT_FILE,
+               "\tg_value_init (&%s_submenu_position, G_TYPE_UINT);\n",
+                widget->name);
+        fprintf( CURRENT_FILE,
+               "\tg_value_set_uint(&%s_submenu_position, %s);\n",
+               widget->name, position); 
+        fprintf( CURRENT_FILE,
+               "\tgtk_container_child_set_property(GTK_CONTAINER (gui->%s),\n",
+               popovermenu); 
+        fprintf( CURRENT_FILE,
+               "\t            GTK_WIDGET (gui->%s), \"position\", (const GValue *) &%s_submenu_position);\n",
+               widget->name,widget->name); 
+    }
+}
+
 void pack_combo_box_column( g2cWidget *widget )
 {
 gchar * col_no = NULL;
@@ -3399,6 +3504,30 @@ gchar *norm_label = NULL;
            "\tgtk_menu_item_set_label (GTK_MENU_ITEM(gui->%s), %s);\n",
             widget->name, g2c_stringify(norm_label));
     g_free( norm_label );
+}
+
+void menu_bar_direction( g2cWidget *widget )
+{
+gchar *direction = NULL;
+gchar *direction_enum = NULL;
+
+    g_assert( NULL != widget );
+    direction = g2c_widget_get_property( widget, "pack_direction" );
+    if (direction != NULL) {
+        direction_enum = make_enumeral("GTK_PACK_DIRECTION", direction);
+        fprintf( CURRENT_FILE,
+               "\tgtk_menu_bar_set_pack_direction (GTK_MENU_BAR(gui->%s), %s);\n",
+                widget->name, direction_enum);
+        g_free( direction_enum );
+    }
+    direction = g2c_widget_get_property( widget, "child_pack_direction" );
+    if (direction != NULL) {
+        direction_enum = make_enumeral("GTK_PACK_DIRECTION", direction);
+        fprintf( CURRENT_FILE,
+               "\tgtk_menu_bar_set_child_pack_direction (GTK_MENU_BAR(gui->%s), %s);\n",
+                widget->name, direction_enum);
+        g_free( direction_enum );
+    }
 }
 
 void 
@@ -3950,6 +4079,32 @@ gchar *main_type = NULL;
         g_message("YOU NEED TO ENTER the widget (button) which is 'relative to' this popover %s\n", widget->name);
     } 
 }
+
+void create_gtk_popovermenu( g2cWidget *widget )
+{
+gchar *relative_to = NULL;
+gchar *main_type = NULL;
+
+    relative_to = g2c_widget_get_property( widget, "relative_to" );
+    main_type = g2c_transform_name( MAIN_WINDOW, NT_TYPENAME );
+    if (relative_to != NULL) {
+        fprintf( CURRENT_FILE,
+               "\tgui->%s = (GtkPopoverMenu*) gtk_popover_menu_new ();\n",
+               widget->name );  
+        fprintf( CURRENT_FILE,
+                "\tgtk_popover_set_relative_to(GTK_POPOVER(gui->%s), GTK_WIDGET ( ((%s*)owner)->gui->%s ));\n",
+                widget->name, main_type, relative_to );
+        fprintf( CURRENT_FILE,
+                "\tgtk_menu_button_set_popover(GTK_MENU_BUTTON( ((%s*)owner)->gui->%s ), GTK_WIDGET(gui->%s) );\n",
+                main_type, relative_to, widget->name);
+    } else {
+        fprintf( CURRENT_FILE,
+               "\tgui->%s = (GtkPopover*) gtk_popover_menu_new (NULL);\n",
+               widget->name);
+        g_message("YOU NEED TO ENTER the widget (button) which is 'relative to' this popovermenu %s\n", widget->name);
+    } 
+}
+
 
 void create_gtk_cellrenderertoggle( g2cWidget *widget )
 {
@@ -4804,13 +4959,16 @@ g2c_widget_new( gchar *class_name )
       } else if (strcmp( widget->klass_name, "GtkTreeView" ) == 0) {  widget->klass = GTK_TYPE_TREE_VIEW;
       } else if (strcmp( widget->klass_name, "GtkTreeSelection" ) == 0) {  widget->klass = GTK_TYPE_TREE_SELECTION;
       } else if (strcmp( widget->klass_name, "GtkTreeViewColumn" ) == 0) {  widget->klass = GTK_TYPE_TREE_VIEW_COLUMN;
+      } else if (strcmp( widget->klass_name, "GtkCheckMenuItem" ) == 0) {  widget->klass = GTK_TYPE_CHECK_MENU_ITEM;
       } else if (strcmp( widget->klass_name, "GtkRadioMenuItem" ) == 0) {  widget->klass = GTK_TYPE_RADIO_MENU_ITEM;
       } else if ( strcmp( widget->klass_name, "GtkModelButton" ) == 0 ) { widget->klass = GTK_TYPE_MODEL_BUTTON;
 //      } else if ( strcmp( widget->klass_name, "GtkButton" ) == 0 ) { widget->klass = GTK_TYPE_BUTTON;
       } else if ( strcmp( widget->klass_name, "GtkScaleButton" ) == 0 ) { widget->klass = GTK_TYPE_SCALE_BUTTON;
       } else if (strcmp( widget->klass_name, "GtkFixed" ) == 0) {  widget->klass = GTK_TYPE_FIXED;
+      } else if (strcmp( widget->klass_name, "GtkGrid" ) == 0) {  widget->klass = GTK_TYPE_GRID;
       } else if (strcmp( widget->klass_name, "GtkStack" ) == 0) {  widget->klass = GTK_TYPE_STACK;
       } else if (strcmp( widget->klass_name, "GtkStackSwitcher" ) == 0) {  widget->klass = GTK_TYPE_STACK_SWITCHER;  
+      } else if (strcmp( widget->klass_name, "GtkStackSidebar" ) == 0) {  widget->klass = GTK_TYPE_STACK_SIDEBAR;  
       } else if (strcmp( widget->klass_name, "GtkScale" ) == 0) {  widget->klass = GTK_TYPE_SCALE;
       } else if (strcmp( widget->klass_name, "GtkActionBar" ) == 0) {  widget->klass = GTK_TYPE_ACTION_BAR;
       } else if (strcmp( widget->klass_name, "GtkSearchBar" ) == 0) {  widget->klass = GTK_TYPE_SEARCH_BAR;
@@ -4880,6 +5038,7 @@ g2c_widget_new( gchar *class_name )
       else if ( strcmp( widget->klass_name, "GtkCheckButton" ) == 0 ) widget->klass = GTK_TYPE_CHECK_BUTTON;
       else if ( strcmp( widget->klass_name, "GtkMenuButton" ) == 0 ) widget->klass = GTK_TYPE_MENU_BUTTON;
       else if ( strcmp( widget->klass_name, "GtkPopover" ) == 0 ) widget->klass = GTK_TYPE_POPOVER;
+      else if ( strcmp( widget->klass_name, "GtkPopoverMenu" ) == 0 ) widget->klass = GTK_TYPE_POPOVER_MENU;
       else if ( strcmp( widget->klass_name, "GtkModelButton" ) == 0 ) widget->klass = GTK_TYPE_MODEL_BUTTON;
       else if ( strcmp( widget->klass_name, "GtkImageMenuItem" ) == 0 ) widget->klass = GTK_TYPE_MENU_ITEM;
       else if ( strcmp( widget->klass_name, "GtkImage" ) == 0 ) widget->klass = GTK_TYPE_IMAGE;
@@ -4914,6 +5073,7 @@ g2c_widget_new( gchar *class_name )
       else if ( strcmp( widget->klass_name, "GtkFixed" ) == 0 ) widget->klass = GTK_TYPE_FIXED;
       else if ( strcmp( widget->klass_name, "GtkStack" ) == 0 ) widget->klass = GTK_TYPE_STACK;
       else if ( strcmp( widget->klass_name, "GtkStackSwitcher" ) == 0 ) widget->klass = GTK_TYPE_STACK_SWITCHER;
+      else if ( strcmp( widget->klass_name, "GtkStackSidebar" ) == 0 ) widget->klass = GTK_TYPE_STACK_SIDEBAR;
       else if ( strcmp( widget->klass_name, "GtkHeaderBar" ) == 0)   widget->klass = GTK_TYPE_HEADER_BAR;
       else if ( strcmp( widget->klass_name, "GtkScrollbar" ) == 0)   widget->klass = GTK_TYPE_SCROLLBAR;
       else if ( strcmp( widget->klass_name, "GtkScale" ) == 0)   widget->klass = GTK_TYPE_SCALE;
@@ -5767,7 +5927,7 @@ g2c_widget_create_temp_declaration_cb( gpointer data,
 
   g2cWidget *widget = ( g2cWidget * ) data;
   gboolean pixbuf = FALSE;
-
+ 
   g_assert( NULL != widget );
   
   /*  GtkCombo is deprecated and should not be used in newly-written code.  */
@@ -5861,6 +6021,19 @@ g2c_widget_create_temp_declaration_cb( gpointer data,
       if (widget->packing.stack.position != 0) {
           fprintf( CURRENT_FILE,
                   "GValue %s_position = G_VALUE_INIT;\n",
+                  widget->name);
+      }
+  }
+  if ( ( widget->parent != NULL ) && 
+       ( strcmp( widget->parent->klass_name,"GtkPopoverMenu" ) == 0 ) ) {
+      if ( g2c_widget_get_property( widget, "_submenu" ) != NULL ) {
+        fprintf( CURRENT_FILE,
+                  "GValue %s_submenu = G_VALUE_INIT;\n",
+                  widget->name);
+      }
+      if ( g2c_widget_get_property( widget, "_position" ) != NULL ) {
+        fprintf( CURRENT_FILE,
+                  "GValue %s_submenu_position = G_VALUE_INIT;\n",
                   widget->name);
       }
   }

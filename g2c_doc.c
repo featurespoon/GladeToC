@@ -58,7 +58,7 @@ static void       output_temp_declarations( g2cWidget *widget, FILE *file );
 static void       output_accelerator_declarations( g2cWidget *widget, FILE *file );
 static void       output_focus_accelerator_declarations( g2cWidget *widget, FILE *file );
 static void       output_accelerators( g2cWidget *widget, FILE *file );
-static void       output_items ( g2cWidget *widget, FILE* file );
+static void       output_combobox_items ( g2cWidget *widget, FILE* file );
 static void       output_patterns ( g2cWidget *widget, FILE* file );
 static void       output_mime_types ( g2cWidget *widget, FILE *file );
 static void       output_attributes ( g2cWidget *widget, FILE* file );
@@ -286,14 +286,15 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkRecentChooserDialog") == 0) ||
           (strcmp(widget->klass_name, "GtkMessageDialog") == 0)  || 
           (strcmp(widget->klass_name, "GtkAppChooserDialog") == 0) ||
-          (strcmp(widget->klass_name, "GtkOffscreenWindow") == 0)  ||
-          (strcmp(widget->klass_name, "GtkPopover") == 0) ) {
+          (strcmp(widget->klass_name, "GtkOffscreenWindow") == 0) ||
+          (strcmp(widget->klass_name, "GtkPopover") == 0) ||
+          (strcmp(widget->klass_name, "GtkPopoverMenu") == 0)) {
           widget->associates = associates;
           associates = NULL;
           widget->accel_widgets = accel_widgets;
           accel_widgets = NULL;
-          widget->popups = popups;
-          popups = NULL;
+          //widget->popups = popups;
+          //popups = NULL;
           doc->project->dialogue_widgets = g_list_append(doc->project->dialogue_widgets, widget);
       }
       if (strcmp(widget->klass_name, "GtkAccelGroup") == 0) {
@@ -304,7 +305,17 @@ g2c_doc_output( g2cDoc *doc )
       }
       run = g_list_next(run);
   }
-
+  
+  if (popups != NULL) {
+      doc->project->main_widget->popups = 
+              g_list_concat(doc->project->main_widget->popups, popups);
+  }
+  if (accel_widgets != NULL) {
+      doc->project->main_widget->accel_widgets = 
+              g_list_concat(doc->project->main_widget->accel_widgets, accel_widgets);
+  }
+  /*                 ***  End of restructuring                *** */
+  
   /* Write out the main.c file */
 #ifdef WIN32
   if ( (g_str_has_prefix(doc->project->source_directory, "C:")) ||
@@ -1038,6 +1049,21 @@ else if( g_type_is_a( widget->parent->klass, GTK_TYPE_STACK ) )
         doc->current = get_next_node(doc->current);
     }   /*  end while */
 }
+else if( g_type_is_a( widget->parent->klass, GTK_TYPE_POPOVER_MENU ) ) 
+ {
+    while (doc->current != NULL) { 
+        if ( strcmp( get_node_name( doc->current ), "property" ) == 0 ) {
+           attr = doc->current->properties;
+           if ( strcmp( get_attr_node_text( attr ), "submenu" ) == 0 ) { 
+               g2c_widget_set_property (widget, "_submenu", get_node_text( doc->current ) );              
+           }
+           if ( strcmp( get_attr_node_text( attr ), "position" ) == 0 ) { 
+               g2c_widget_set_property (widget, "_position", get_node_text( doc->current ) );              
+           } 
+        }   
+        doc->current = get_next_node(doc->current);    
+    }  /*  end while */
+ }
 }
 
 static g2cAccel *
@@ -1508,7 +1534,8 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
   }
  
   /* ACCELERATOR CODE */
-  if (strcmp(main_widget->klass_name, "GtkPopover") != 0) {
+  if ( (strcmp(main_widget->klass_name, "GtkPopoverMenu") != 0) && 
+       (strcmp(main_widget->klass_name, "GtkPopover") != 0) ) {
     fprintf( file, "\n\t/* Accelerators */\n" );
     fprintf( file, "\n\tgtk_window_add_accel_group (GTK_WINDOW(gui->%s), gui->accel_group);\n", main_widget->name );
     run = main_widget->accel_widgets;
@@ -2237,7 +2264,15 @@ output_widget_create( g2cWidget *widget,
                   /* This is a child widget of a GtkToolbar */
                   output_toolbar_widget( widget, file );
                 }
-              else if ( strcmp( widget->parent->klass_name, "GtkViewport" ) == 0 )  {
+              else if (( strcmp( widget->parent->klass_name, "GtkViewport"        ) == 0 ) ||
+                       ( strcmp( widget->parent->klass_name, "GtkOffscreenWindow" ) == 0 ) ||
+                       ( strcmp( widget->parent->klass_name, "GtkAssiatant"       ) == 0 ) ||
+                       ( strcmp( widget->parent->klass_name, "GtkRevealer"        ) == 0 ) ||
+                       ( strcmp( widget->parent->klass_name, "GtkActionBar"       ) == 0 ) ||
+                       ( strcmp( widget->parent->klass_name, "GtkListBoxRow"      ) == 0 ) ||
+                       ( strcmp( widget->parent->klass_name, "GtkMenuButton"      ) == 0 ) ||
+                       ( strcmp( widget->parent->klass_name, "GtkSearchBar"       ) == 0 ) ) 
+              {
                   fprintf( file,
                         "\tgtk_container_add(GTK_CONTAINER(gui->%s), GTK_WIDGET(gui->%s));\n",
                         widget->parent->name,
@@ -2269,18 +2304,6 @@ output_widget_create( g2cWidget *widget,
                         widget->parent->name,
                         widget->name);
               }
-              else if ( strcmp( widget->parent->klass_name, "GtkListBoxRow" ) == 0 )  {
-                  fprintf( file,
-                        "\tgtk_container_add(GTK_CONTAINER(gui->%s), GTK_WIDGET(gui->%s));\n",
-                        widget->parent->name,
-                        widget->name);
-              }
-              else if ( strcmp( widget->parent->klass_name, "GtkMenuButton" ) == 0 )  {
-                  fprintf( file,
-                        "\tgtk_container_add(GTK_CONTAINER(gui->%s), GTK_WIDGET(gui->%s));\n",
-                        widget->parent->name,
-                        widget->name);
-              }
               else if (( strcmp( widget->klass_name, "GtkToolItemGroup" ) == 0 ) &&
                        ( strcmp( widget->parent->klass_name, "GtkToolPalette" ) == 0 ))  {
                   fprintf( file,
@@ -2293,30 +2316,6 @@ output_widget_create( g2cWidget *widget,
                         "\tgtk_tool_item_group_insert(GTK_TOOL_ITEM_GROUP(gui->%s), GTK_TOOL_ITEM(gui->%s), -1);\n",
                         widget->parent->name,
                         widget->name);
-              }
-              else if ( strcmp( widget->parent->klass_name, "GtkRevealer" ) == 0 )  {
-                  fprintf( file,
-                        "\tgtk_container_add (GTK_CONTAINER (gui->%s), GTK_WIDGET(gui->%s));\n",
-                        widget->parent->name,
-                        widget->name);
-              }
-              else if ( strcmp( widget->parent->klass_name, "GtkActionBar" ) == 0 )  {
-                  fprintf( file,
-                        "\tgtk_container_add (GTK_CONTAINER (gui->%s), GTK_WIDGET(gui->%s));\n",
-                        widget->parent->name,
-                        widget->name);
-              }
-              else if ( strcmp( widget->parent->klass_name, "GtkAssiatant" ) == 0 )  {
-                  fprintf( file,
-                        "\tgtk_container_add (GTK_CONTAINER (gui->%s), GTK_WIDGET(gui->%s));\n",
-                        widget->parent->name,
-                        widget->name);
-              }
-              else if ( strcmp( widget->parent->klass_name, "GtkSearchBar" ) == 0 )  {
-                    fprintf( file,
-                          "\tgtk_container_add (GTK_CONTAINER (gui->%s), GTK_WIDGET(gui->%s));\n",
-                          widget->parent->name,
-                          widget->name);                        
               }
               else if ( strcmp( widget->klass_name, "GtkEntry" ) == 0 ) {                      
                       if (( widget->parent->parent != NULL) && 
@@ -2517,6 +2516,7 @@ output_widget_create( g2cWidget *widget,
                      if ((strcmp(widget->parent->klass_name, "GtkWindow") == 0) ||
                          (strcmp(widget->parent->klass_name, "GtkScrolledWindow") == 0) ||                             
                          (strcmp(widget->parent->klass_name, "GtkApplicationWindow") == 0) ||                             
+                         (strcmp(widget->parent->klass_name, "GtkPopoverMenu") == 0)  ||                             
                          (strcmp(widget->parent->klass_name, "GtkPopover") == 0) )
                       {
                         if ( strcmp( widget->klass_name, "GtkHeaderBar" ) == 0 )  {
@@ -2563,7 +2563,7 @@ output_widget_create( g2cWidget *widget,
   }
   if ((strcmp( widget->klass_name, "GtkComboBoxText" ) == 0 ) &&
           (widget->comboboxtext_items != NULL)) {
-      output_items ( widget, file );
+      output_combobox_items ( widget, file );
   }
   
   if ( ( (strcmp( widget->klass_name, "GtkFileFilter"   ) == 0 ) ||
@@ -2889,7 +2889,7 @@ output_toolbar_widget( g2cWidget *widget, FILE* file )
 }
 
 static void
-output_items ( g2cWidget *widget, FILE* file )
+output_combobox_items ( g2cWidget *widget, FILE* file )
 {
 GList       *run  = NULL;
 g2cItemData *data = NULL;
