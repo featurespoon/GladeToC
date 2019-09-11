@@ -2937,7 +2937,7 @@ GString *blue = NULL;
                  "\t\tpango_attr_strikethrough_new( TRUE ));\n"
                  );
     } else return;
-                widget->name, widget->name, name);
+           
 }
 
 static void
