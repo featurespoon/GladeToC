@@ -309,6 +309,33 @@ g2c_doc_output( g2cDoc *doc )
               g_list_concat(doc->project->main_widget->accel_widgets, accel_widgets);
   }
   /*                 ***  End of restructuring                *** */
+    
+  /*       Sets up register of widgets for each window/dialog        */
+  
+  scan_widgets_for_register(doc->project->main_widget, doc->project->main_widget);
+
+  run = g_list_first(doc->project->dialogue_widgets);
+  while (run != NULL) {
+          widget = (g2cWidget *) run->data;
+          scan_widgets_for_register(doc->project->main_widget, widget);
+          run = g_list_next(run);
+  }
+
+  /*                   End of  register of widgets               */ 
+ 
+  /*   now analyse the register and requires list to ensure compilation in the right order */
+  
+  analyse_requirements(doc->project->main_widget);  
+  //print_out_register(doc->project->main_widget);
+  
+  run = g_list_first(doc->project->dialogue_widgets);
+  while (run != NULL) {
+          widget = (g2cWidget *) run->data;
+          analyse_requirements(widget); 
+          print_out_register(widget);
+          run = g_list_next(run);
+  }
+  /*                   End of analysis and re-ordering of widgets               */ 
   
   /* Write out the main.c file */
 #ifdef WIN32
@@ -2937,7 +2964,7 @@ GString *blue = NULL;
                  "\t\tpango_attr_strikethrough_new( TRUE ));\n"
                  );
     } else return;
-                widget->name, widget->name, name);
+                
 }
 
 static void

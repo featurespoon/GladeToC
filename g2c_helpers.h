@@ -148,4 +148,77 @@ file_exists(gchar* file_name);
 void
 g2c_copy_file(gchar *input, gchar *output);
 
+void
+register_add(g2cWidget *main, gchar* name, g2cWidget *widget);
+
+void
+requires_add(g2cWidget *main, gchar *requires, gchar *required);
+
+g2cRequires *
+requires_copy(g2cRequires *require);
+
+void
+require_free(g2cRequires *require);
+
+void 
+free_requires(gpointer data);
+
+void
+scan_widgets_for_register(g2cWidget *main, g2cWidget *widget);
+
+void
+scan_properties_for_requires(g2cWidget *main, g2cWidget *widget);
+
+void 
+scan_packing_for_requires(g2cWidget *main, g2cWidget *widget);
+
+void
+analyse_requirements(g2cWidget *main);
+
+gint
+set_widget_level(g2cWidget *main, gchar *name, gint level);
+
+void
+scan_requires_list(g2cWidget *main, gchar* current, gint level);
+
+void 
+build_next_level(g2cWidget *main, guint level, guint *result);
+
+gboolean
+find_in_layer(GList *layer_list, gchar *required);
+
+gboolean
+find_required(g2cWidget *main, gchar *requiring, gchar *misplaced);
+
+void 
+demotion(g2cWidget *main, gchar* misplaced, guint level);
+
+guint
+get_max_register_level(g2cWidget *main);
+
+GList *
+list_remove(GList *list, gchar *requiring, gchar* required);
+
+GList *
+list_copy(GList *list);
+
+gboolean
+detect_cycles(g2cWidget *main);
+
+gchar *
+build_cycle(GList **chain, g2cWidget *main, GList *detect_copy, GList *requires_copy, gchar *next);
+
+gboolean 
+check_list_contains(GList **chain, gchar *required);
+
+g2cRequires *
+find_linked_require(GList *requires_copy, gchar *requiring);
+
+void 
+print_out_register(g2cWidget *main);
+
+void print_out_chain(GList *chain);
+
+void print_out_requires(GList *requires);
+
 #endif

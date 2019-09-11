@@ -119,8 +119,26 @@ typedef struct tag_g2cWidget
     guint                 order;
     gchar                *child_name;
     gboolean              internal;
+    GList                *regster;
+    GList                *requires;
   }
 g2cWidget;
+
+typedef struct tag_g2cRegister
+{
+    g2cWidget *widget;
+    gchar *name;
+    gint  level;
+} 
+g2cRegister;
+
+typedef struct tag_g2cRequires
+{
+    gchar *required;
+    gchar *requiring;
+    guint used;
+}
+g2cRequires;
 
 typedef struct tag_g2cProject
   {

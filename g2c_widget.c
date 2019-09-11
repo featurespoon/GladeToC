@@ -4916,7 +4916,9 @@ g2c_widget_new( gchar *class_name )
   widget->packing.stack.needs_attention = FALSE;
   widget->packing.stack.position = 0;
   widget->packing.stack.title = NULL;
-
+  widget->regster = NULL;
+  widget->requires = NULL;
+  
   widget->klass_name =  class_name ;
   widget->name = NULL;
 

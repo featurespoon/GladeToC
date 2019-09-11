@@ -637,4 +637,657 @@ gchar buffer[2048];
   fclose( file1 );
 
 }
+void
+register_add(g2cWidget *main, gchar* name, g2cWidget *widget)
+{
+g2cRegister *reg =  g_new0( g2cRegister, 1 ); 
+    reg->name = g_strdup(name);
+    reg->widget = widget;
+    reg->level = 0;
+    main->regster = g_list_append(main->regster, (gpointer) reg);
+    //g_message ("register %s\n", name);
+}
+
+void 
+requires_add(g2cWidget *main, gchar *requiring, gchar *required)
+{
+g2cRequires *req = g_new0( g2cRequires, 1);
+    req->requiring = g_strdup(requiring);
+    req->required = g_strdup(required);
+    req->used = 0;
+    main->requires = g_list_append(main->requires, (gpointer) req);
+   // g_message ("%s requires %s\n", requiring, required);
+}
+
+g2cRequires *
+requires_copy(g2cRequires *require)
+{
+g2cRequires *req = g_new0( g2cRequires, 1);
+    req->requiring = g_strdup(require->requiring);
+    req->required = g_strdup(require->required);
+    req->used = 0; 
+    return req;
+}
+
+void
+require_free(g2cRequires *require)
+{
+    g_free(require->requiring);
+    g_free(require->required);
+    g_free(require);
+    return;
+}
+
+void print_out_register(g2cWidget *main)
+{
+GList *register_list;
+g2cRegister *reg;
+
+    register_list = g_list_first( main->regster );
+    while ( NULL != register_list ) {
+        reg = (g2cRegister *) register_list->data;
+        g_message("%s %d\n", reg->name, reg->level);
+        register_list = g_list_next( register_list );   
+    }
+}
+
+void print_out_requires(GList *requires)
+{
+GList *require_item;
+g2cRequires *require;
+
+    require_item = g_list_first( requires );
+    while ( NULL != require_item ) {
+        require = (g2cRequires *) require_item->data;
+        g_message("%s requires %s\n", require->requiring, require->required);
+        require_item = g_list_next( require_item );   
+    }
+}
+
+guint
+get_max_register_level(g2cWidget *main)
+{
+GList *register_list;
+g2cRegister *reg;
+guint max_level = 0;
+
+    register_list = g_list_first( main->regster );
+    while ( NULL != register_list ) {
+        reg = (g2cRegister *) register_list->data;        
+        if ( reg->level > max_level ) max_level = reg->level;
+        register_list = g_list_next( register_list );   
+    } 
+    return max_level;
+}
+
+void
+analyse_requirements(g2cWidget *main)
+{
+guint Level = 1;
+//GList *reg_list;
+GList *register_list;
+g2cRegister *reg;
+gchar *current = NULL;
+guint result;
+guint max_level;
+
+    //print_out_requires(main->requires);
+    detect_cycles(main);  // and if necessary remove one requires to break the cycle.
+    //g_message("\nrequires after detect cycles\n");
+    //print_out_requires(main->requires);
+    register_list = g_list_first( main->regster );
+    reg = (g2cRegister *) register_list->data;
+    current = reg->name;
+    reg->level = Level;
+    /*  top level widget now set up  */
+
+    /*  scan requires list for requires entries where current is the required widget  */
     
+    //scan_requires_list(main, current, Level);
+    max_level = get_max_register_level(main);
+    do {
+      build_next_level(main, Level, &result);
+      Level++;
+    } while (result > 0);
+
+}
+/*  used  */
+void build_next_level(g2cWidget *main, guint level, guint *result)
+{
+guint next_level = level + 1; 
+GList *layer_list = NULL;
+GList *register_list;
+g2cRegister *reg;
+GList *requires_list; 
+g2cRequires *require;
+gboolean bFound;
+guint returned_level = 0;
+GList *layer_item1;
+gchar *layer_name1;
+GList *layer_item2;
+gchar *layer_name2;
+
+    *result = 0;
+    // Build the layer list for current level
+    register_list =  g_list_first( main->regster );
+    while ( NULL != register_list ) {
+        reg = (g2cRegister *) register_list->data;
+        if (reg->level == level) {
+            layer_list = g_list_append(layer_list, (gpointer) reg->name);
+        }        
+        register_list = g_list_next( register_list );   
+    }
+    // look in requires list for item(s) where 'required' is in layer list
+    requires_list = g_list_first( main->requires );
+    while ( NULL != requires_list ) {
+        require = (g2cRequires *) requires_list->data; 
+        if (require->used < 10) {
+            bFound = find_in_layer(layer_list, require->required);
+            if (bFound == TRUE) {
+                returned_level = set_widget_level(main, require->requiring, next_level);
+                require->used++;               
+                if (returned_level > 0) {                
+                    if (returned_level < next_level) {
+                        g_message("  %s demoted\n", require->requiring );
+                       // demotion(main, require->requiring, next_level);
+                    }
+                    (*result)++;
+                }
+            }
+        }
+        requires_list = g_list_next( requires_list );
+    }
+    // looks through layer list to find requires relationships between siblings/members
+    
+    layer_item1 = g_list_first( layer_list );
+    while ( NULL != layer_item1 ) {
+        layer_name1 = (gchar *) layer_item1->data;        
+        layer_item2 = g_list_first( layer_list );
+        while ( NULL != layer_item2 ) {
+            layer_name2 = (gchar *) layer_item2->data;
+            if (strcmp(layer_name1,layer_name2) != 0) {
+                bFound = find_required(main, layer_name1, layer_name2);
+                if (bFound == TRUE) {
+                    // demote layer_name1 which requires layer_name2
+                    set_widget_level(main, layer_name1, next_level);
+                    //demotion(main, layer_name1, next_level);   /*  redundant */
+                }
+            }
+            layer_item2 = g_list_next( layer_item2 );
+        }        
+        layer_item1 = g_list_next( layer_item1 );
+    }
+}
+
+GList *
+list_remove(GList *list, gchar *requiring, gchar* required)
+{
+GList *requires_item; 
+g2cRequires *require;
+GList *new_list = NULL;
+g2cRequires *req;
+
+    requires_item = g_list_first( list );
+    while ( NULL != requires_item ) {
+        require = (g2cRequires *) requires_item->data; 
+        if ((strcmp(require->required, required) != 0) ||
+            (strcmp(require->requiring, requiring) != 0) )   {
+            req = g_new0( g2cRequires, 1);
+            req->requiring = g_strdup(require->requiring);
+            req->required = g_strdup(require->required);
+            req->used = 0;            
+            new_list = g_list_append(new_list,  (gpointer) req);
+        }        
+        requires_item = g_list_next( requires_item );
+    }
+    return new_list;
+}
+
+GList *
+list_copy(GList *list)
+{
+GList *requires_item; 
+g2cRequires *require;
+GList *new_list = NULL;
+g2cRequires *req;
+
+    requires_item = g_list_first( list );
+    while ( NULL != requires_item ) {
+        require = (g2cRequires *) requires_item->data;  
+        req = g_new0( g2cRequires, 1);
+        req->requiring = g_strdup(require->requiring);
+        req->required = g_strdup(require->required);
+        req->used = 0;            
+        new_list = g_list_append(new_list,  (gpointer) req);                
+        requires_item = g_list_next( requires_item );
+    }
+    return new_list;
+}
+
+void
+delete_chain(GList *chain)
+{
+GList *chain_member; 
+
+    chain_member = g_list_first(chain);
+    while (chain_member != NULL)  {
+        g_free( chain_member->data );
+        chain_member = g_list_next( chain_member );
+    } 
+    g_list_free (chain);
+}
+
+void print_out_chain(GList *chain)
+{
+GList *chain_item;
+gchar *chain_member;
+
+    chain_item = g_list_first(  chain );
+    while ( NULL != chain_item ) {
+        chain_member = (gchar *) chain_item->data;
+        g_message(" %s ", chain_member);
+        chain_item = g_list_next( chain_item );   
+    }
+    g_message("\n");
+}
+gboolean 
+check_list_contains(GList **chain, gchar *required)
+{
+GList *chain_member; 
+gchar *char_member;
+
+    chain_member = g_list_first(*chain);
+    while (chain_member != NULL)  {
+        char_member = (gchar *) chain_member->data;
+        if (strcmp(char_member, required) == 0) {
+            return TRUE;
+        }
+        chain_member = g_list_next( chain_member );
+    }
+    return FALSE;
+}
+
+g2cRequires *
+find_linked_require(GList *requires_copy_of, gchar *requiring)
+{
+GList *requires_item; 
+g2cRequires *require;
+
+    requires_item = g_list_first( requires_copy_of );
+    while ( NULL != requires_item ) {
+        require = (g2cRequires *) requires_item->data; 
+        if (strcmp(require->requiring, requiring) == 0) {
+            return requires_copy(require);
+        }
+        requires_item = g_list_next( requires_item );
+    }
+    return NULL;
+}
+
+// used by g_list_free_full
+void free_requires(gpointer data)
+{
+    require_free((g2cRequires *) data);
+}
+
+gchar *
+build_cycle(GList **chain, g2cWidget *main, GList *detect_copy, GList *requires_copy, gchar *next)
+{
+gchar *required = NULL; 
+gchar *requiring = NULL;
+g2cRequires *require;
+gboolean bFound;
+gchar *cycle;
+GList  *old_requires = NULL;
+
+    require = find_linked_require(requires_copy, next);  // returns g2cRequire where requiring = supplied next
+    while (require != NULL) {  
+        if (required != NULL) g_free( required );
+        if (requiring != NULL) g_free( requiring );
+        required = g_strdup(require->required);   
+        requiring = g_strdup(require->requiring);  // = next first time round
+        bFound = check_list_contains(chain, required);
+        if (bFound == TRUE) {
+            //this is a cycle:   remove require from main->requires
+            //print_out_chain(*chain);
+            g_message("Cycle detected: deleted widget %s requiring widget %s\n", requiring, required);
+            old_requires = main->requires;
+            main->requires = list_remove(main->requires, requiring, required); 
+            g_list_free_full(old_requires, free_requires);
+            if (requiring != NULL) g_free( requiring );
+            return required;
+        }
+        *chain = g_list_append(*chain, (gpointer) g_strdup(required)); 
+        require_free(require);
+        require = find_linked_require(requires_copy, required);
+    };
+    return NULL;
+}
+
+gboolean
+detect_cycles(g2cWidget *main)
+{
+GList *requires_item; 
+g2cRequires *require;
+GList *requires_copy = NULL;
+GList *detect_copy = NULL;
+GList *chain = NULL;
+gchar *cycle;
+
+    detect_copy = list_copy( main->requires );
+    requires_copy = list_copy( main->requires );
+    requires_item = g_list_first( detect_copy );
+    while ( NULL != requires_item ) {
+        require = (g2cRequires *) requires_item->data; 
+        chain = g_list_append(chain, (gpointer) g_strdup(require->requiring));
+        chain = g_list_append(chain, (gpointer) g_strdup(require->required));
+        //g_message("build cycle chain from %s requires %s\n", require->requiring, require->required);
+        cycle = build_cycle(&chain, main, detect_copy, requires_copy, require->required);
+        if (cycle != NULL) {
+            //g_message("   Cycle detected containing %s. \n", cycle);            
+            return TRUE;
+        }
+        //print_out_chain(chain);
+        delete_chain( chain ); 
+        chain = NULL;
+        //g_message("End of chain\n");
+        requires_item = g_list_next( requires_item );
+    }
+    //g_message("\ncontents of detect_copy after detect\n");
+    //print_out_requires(detect_copy);
+   // g_message("end of contents of detect_copy\n\n");
+    g_list_free_full(detect_copy, free_requires);
+    g_list_free_full(requires_copy, free_requires);
+    return FALSE;
+}
+
+void demotion(g2cWidget *main, gchar* misplaced, guint level)
+{  // demote all items that required the misplaced item
+//GList *temp_list = NULL;
+GList *register_list;
+g2cRegister *reg;
+gchar *temp_item;
+gboolean bFound;
+guint next_level = level + 1;
+    
+/*  go over items so far at the new level */
+    register_list =  g_list_first( main->regster );
+    while ( NULL != register_list ) {
+        reg = (g2cRegister *) register_list->data;
+        if (reg->level == level) {
+           temp_item = reg->name;  // name of item which should be a requiring item
+           // look for  requires item that links temp_item (requiring) to misplaced (required)
+           bFound = find_required(main, temp_item, misplaced);
+           // if found, set level of temp_item to level + 1
+           if (bFound == TRUE) {
+               set_widget_level(main, temp_item, next_level);
+           }           
+        }        
+        register_list = g_list_next( register_list );   
+    }
+}
+/*  used  */
+gboolean
+find_required(g2cWidget *main, gchar *requiring, gchar *misplaced)
+{  // existence of requires item that links requiring item to misplaced (required)
+GList *requires_list; 
+g2cRequires *requires;
+    
+    requires_list = g_list_first( main->requires );
+    while ( NULL != requires_list ) {
+        requires = (g2cRequires *) requires_list->data;  
+        if (requires->used < 10) {
+            if ((strcmp(requires->requiring,requiring) == 0) &&
+                (strcmp(requires->required,misplaced) == 0) ) {
+                requires->used++;
+                return TRUE;
+            }
+        }
+        requires_list = g_list_next( requires_list );
+    }
+    return FALSE;
+}
+
+/*  used  */
+gint
+set_widget_level(g2cWidget *main, gchar *name, gint level)
+{   // scanning register list to named item to the level
+GList *register_list;
+g2cRegister *reg;
+guint old_level;
+
+    register_list =  g_list_first( main->regster );
+    while ( NULL != register_list ) {
+        reg = (g2cRegister *) register_list->data;
+        if (strcmp(reg->name, name) == 0 ) {
+            if (reg->level != 0) {
+                //g_message("demotion required for %s\n", name);
+                old_level = reg->level;
+                reg->level = level;
+                return old_level;
+            } else {
+                reg->level = level;
+                return level;
+            }
+        }
+        register_list = g_list_next( register_list );        
+    }
+    return 0;
+}
+
+/*  used  */
+gboolean
+find_in_layer(GList *layer_list, gchar *required)
+{
+GList *list_member;
+gchar *layer_name;
+
+    list_member = g_list_first(layer_list);
+    while ( NULL != list_member ) {
+       layer_name = (gchar *) list_member->data;
+       if (strcmp(layer_name, required) == 0) {
+           return TRUE;
+       }          
+       list_member = g_list_next(list_member);
+    }
+    return FALSE;
+}
+/*  NOT used  */
+void
+scan_requires_list(g2cWidget *main, gchar* current, gint level)
+{
+gint returned_level;
+GList *requires_list; 
+g2cRequires *requires;
+
+    level++;
+    requires_list = g_list_first( main->requires );
+    while ( NULL != requires_list ) {
+        requires = (g2cRequires *) requires_list->data;    
+        if (strcmp(requires->required, current) == 0) {
+            /*   then set the level of the requiring widget in the register to the new level no. */
+            returned_level = set_widget_level(main, requires->requiring, level);
+            if (returned_level == 0) {
+                g_message("Failed to find requiring widget %s in register\n", requires->requiring);
+                break;
+            }
+            if (returned_level < level) {
+                //g_message("demotion of %s needed\n", requires->requiring );
+                break;
+            }
+            scan_requires_list(main, requires->requiring, level);
+        }
+        requires_list = g_list_next( requires_list );
+    } 
+}
+
+void
+scan_widgets_for_register(g2cWidget *main, g2cWidget *widget)
+{
+GList *widget_list;
+g2cWidget *child;
+
+    register_add(main, widget->name, widget);
+    scan_properties_for_requires(main, widget);
+    scan_packing_for_requires(main,widget);
+
+    widget_list = g_list_first( widget->children );    
+    while ( NULL != widget_list )   {         
+          child = (g2cWidget *) widget_list->data;
+          /*  recurse down  */
+          scan_widgets_for_register(main, child);          
+          widget_list = g_list_next( widget_list );
+    }
+    
+    widget_list = g_list_first( widget->associates );    
+    while ( NULL != widget_list )   {         
+          child = (g2cWidget *) widget_list->data;
+          scan_widgets_for_register(main, child);
+          widget_list = g_list_next( widget_list );
+    }
+    
+    widget_list = g_list_first( widget->accel_widgets );    
+    while ( NULL != widget_list )   {         
+          child = (g2cWidget *) widget_list->data;
+          scan_widgets_for_register(main, child);
+          widget_list = g_list_next( widget_list );
+    }
+    
+    widget_list = g_list_first( widget->popups );    
+    while ( NULL != widget_list )   {         
+          child = (g2cWidget *) widget_list->data;
+          scan_widgets_for_register(main, child);
+          widget_list = g_list_next( widget_list );
+    }
+}
+
+void 
+scan_packing_for_requires(g2cWidget *main, g2cWidget *widget)
+{
+    if ( widget->parent == NULL ) return;
+    
+    if ( (widget->parent->packing_type == BOX_PACKING) ||
+         (widget->parent->packing_type == GRID_PACKING) ){
+        requires_add(main, widget->name, widget->parent->name);
+    }
+    return;
+}
+
+void
+scan_properties_for_requires(g2cWidget *main, g2cWidget *widget)
+{
+GList * item = g_list_first(widget->properties);
+g2cProp *prop;
+  while (item != NULL) {
+      prop = (g2cProp *) item->data;
+      if (strcmp(prop->key,"stack") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if ((strcmp(widget->klass_name, "GtkStackSwitcher") != 0) &&
+            (strcmp(widget->klass_name, "GtkStackSidebar") != 0) ) {
+            g_message("stack property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"menu_name") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if (strcmp(widget->klass_name, "GtkModelButton") != 0) {
+            g_message("menu name property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"group") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if ((strcmp(widget->klass_name, "GtkRadioButton") != 0) &&
+            (strcmp(widget->klass_name, "GtkRadioMenuItem") != 0) &&
+            (strcmp(widget->klass_name, "GtkRadioToolButton") != 0) ) {
+            g_message("group property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"buffer") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if ((strcmp(widget->klass_name, "GtkEntry") != 0) &&
+            (strcmp(widget->klass_name, "GtkSearchEntry") != 0) &&
+            (strcmp(widget->klass_name, "GtkTextView") != 0) &&
+            (strcmp(widget->klass_name, "GtkSpinButton") != 0) ) {
+            g_message("buffer property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"completion") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if ((strcmp(widget->klass_name, "GtkEntry") != 0) &&
+            (strcmp(widget->klass_name, "GtkSearchEntry") != 0) ) {
+            g_message("completion property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"model") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if ( (strcmp(widget->klass_name, "GtkTreeView") != 0) &&
+             (strcmp(widget->klass_name, "GtkEntryCompletion") != 0) ) {
+            g_message("model name property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"accel_group") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if ((strcmp(widget->klass_name, "GtkMenu") != 0) &&
+            (strcmp(widget->klass_name, "GtkImageMenuItem") != 0) ) {
+            g_message("accel_group property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"image") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if ((strcmp(widget->klass_name, "GtkButton") != 0) &&
+            (strcmp(widget->klass_name, "GtkCheckbutton") != 0) &&
+            (strcmp(widget->klass_name, "GtkTogglebutton") != 0) &&
+            (strcmp(widget->klass_name, "GtkRadiobutton") != 0) ) {
+            g_message("image property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"adjustment") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if ((strcmp(widget->klass_name, "GtkScrollbar") != 0) &&
+            (strcmp(widget->klass_name, "GtkSpinButton") != 0) &&
+            (strcmp(widget->klass_name, "GtkScale") != 0) ) {
+            g_message("adjustment property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"hadjustment") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if ((strcmp(widget->klass_name, "GtkViewport") != 0) &&
+            (strcmp(widget->klass_name, "GtkScrolledWindow") != 0) &&
+            (strcmp(widget->klass_name, "GtkToolPalette") != 0) &&
+            (strcmp(widget->klass_name, "GtkTreeview") != 0) ) {
+            g_message("hadjustment property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"vadjustment") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if ((strcmp(widget->klass_name, "GtkViewport") != 0) &&
+            (strcmp(widget->klass_name, "GtkScrolledWindow") != 0) &&
+            (strcmp(widget->klass_name, "GtkToolPalette") != 0) &&
+            (strcmp(widget->klass_name, "GtkTreeview") != 0) ) {
+            g_message("vadjustment property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"label_widget") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if ( (strcmp(widget->klass_name, "GtkToolButton") != 0) &&
+             (strcmp(widget->klass_name, "GtkMenuToolButton") != 0) &&
+             (strcmp(widget->klass_name, "GtkToggleToolButton") != 0) ) {
+            g_message("label_widget name property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"widget") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if (strcmp(widget->klass_name, "GtkTreeViewColumn") != 0) {
+            g_message("widget name property found for %s\n", widget->klass_name );
+        }
+      }
+      if (strcmp(prop->key,"_submenu") == 0) {      
+        requires_add(main, widget->name, prop->value);
+        if (strcmp(widget->klass_name, "GtkBox") != 0) {
+            g_message("submenu name property found for %s\n", widget->klass_name );
+        }
+      }
+      item = item->next;
+  }   /*  end while  */
+  return;    
+}
+
