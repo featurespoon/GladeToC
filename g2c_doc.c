@@ -36,9 +36,7 @@ static gchar     *get_dir_prefix( g2cDoc *doc );
 
 static void       init_types( g2cDoc *doc );
 static void       output_widget_create( g2cWidget *widget,
-                                        FILE *file,
-                                        gint recurse_levels,
-                                        gboolean properties_only );
+                                        FILE *file );
 static void       output_widget_files( g2cWidget *widget, g2cDoc *doc, gboolean bWindow, g2cWidget *parent_widget );
 static void       output_widget_gui_h( g2cWidget *widget, g2cDoc *doc );
 static void       output_widget_gui_c( g2cWidget *widget, g2cDoc *doc, g2cWidget *parent_widget );
@@ -1384,6 +1382,10 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
   GList *run        = NULL;
   GList *signal_run  = NULL;
   g2cSignal *signal2 = NULL;
+  guint max_level;
+  guint level;
+  GList *register_list;
+  g2cRegister *reg;
   
 /* Get the transformed names for the widget */
   //gui_name  = g2c_transform_name( main_widget->name, NT_GUI );
@@ -1497,30 +1499,49 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
   /* Accelerators */
   fprintf( file, "\tgui->accel_group = gtk_accel_group_new ();\n" );
   fprintf( file, "\tg_object_set_data (G_OBJECT (gui->accel_group), \"owner\", owner);\n");
-  run = main_widget->accel_widgets;
-  while (run != NULL) {
-      widget = (g2cWidget *) run->data;      
-      output_widget_create( widget, file, RECURSE_ALL, FALSE );                 
-      run = run->next;
-  } 
-  fprintf( file, "\n" );
-  run = main_widget->associates;
-  while (run != NULL) {
-      widget = (g2cWidget *) run->data;      
-      output_widget_create( widget, file, RECURSE_ALL, FALSE );          
-      run = run->next;
-  } 
-  fprintf( file, "\n" );
-  run = main_widget->popups;
-  while (run != NULL) {
-      widget = (g2cWidget *) run->data;      
-      output_widget_create( widget, file, RECURSE_ALL, FALSE );                 
-      run = run->next;
-  }  
+  /* --------------------- */
+//  run = main_widget->accel_widgets;
+//  while (run != NULL) {
+//      widget = (g2cWidget *) run->data;      
+//      output_widget_create( widget, file, RECURSE_ALL, FALSE );                 
+//      run = run->next;
+//  } 
+//  fprintf( file, "\n" );
+//  run = main_widget->associates;
+//  while (run != NULL) {
+//      widget = (g2cWidget *) run->data;      
+//      output_widget_create( widget, file, RECURSE_ALL, FALSE );          
+//      run = run->next;
+//  } 
+//  fprintf( file, "\n" );
+//  run = main_widget->popups;
+//  while (run != NULL) {
+//      widget = (g2cWidget *) run->data;      
+//      output_widget_create( widget, file, RECURSE_ALL, FALSE );                 
+//      run = run->next;
+//  }  
     /* WIDGET CREATION CODE */
+  max_level = get_max_register_level(main_widget);
+  
   fprintf( file, "\n\t/* Widget construction */\n" );
   
-  output_widget_create( main_widget, file, RECURSE_ALL, FALSE );          
+  for (level = 0; level <= max_level; level++) {
+      
+    fprintf( file, "\t/* Widgets at level %d */\n", level );
+    
+    register_list = g_list_first( main_widget->regster );
+    while ( NULL != register_list ) {
+        reg = (g2cRegister *) register_list->data;
+        if (reg->level == level) {   
+            
+            output_widget_create( reg->widget, file );  
+            
+        }
+        register_list = g_list_next( register_list );  
+    } 
+  }
+  
+  /* ---------------------------------------- */
   
   if (doc->project->main_widget == main_widget) {
       fprintf( file,
@@ -2137,10 +2158,10 @@ gchar *populater = NULL;
 
 static void
 output_widget_create( g2cWidget *widget,
-                      FILE *file,
-                      gint recurse_levels,
-                      gboolean properties_only )
+                      FILE *file )
 /*   Output the create string for the widget.  */
+/*      plus connections to containers         */
+/*      plus properties                        */
 {
   gchar     *func_name        = NULL;
   gboolean   pack_create      = TRUE;
@@ -2178,23 +2199,25 @@ output_widget_create( g2cWidget *widget,
            widget->name );
 #endif
 
-  if( !properties_only )
-    {
-        {
-          /* Gtk widget */
-          if( g_type_is_a( widget->klass, GTK_TYPE_MENU_ITEM ) &&
-              ( NULL == g2c_widget_get_property( widget, "label" ) ) )
-            {              
-                
-              /* Just create the item */
-              fprintf( file,
-                       "\tgui->%s = (%s*) gtk_menu_item_new ();\n",
-                       widget->name, widget->klass_name );
-                
-            }          
-          else
-            {
-              /* gui->widget_name = widget_type_new(); */
+  
+        
+//          /* Gtk Menu Item */
+//          if( g_type_is_a( widget->klass, GTK_TYPE_MENU_ITEM ) &&
+//              ( NULL == g2c_widget_get_property( widget, "label" ) ) )
+//            {              
+//                
+//              /* Just create the item */
+//              fprintf( file,
+//                       "\tgui->%s = (%s*) gtk_menu_item_new ();\n",
+//                       widget->name, widget->klass_name );
+//                
+//            }          
+//          else
+//            {
+            /*              The standard create string is simply:                 */
+            /*                 gui->widget_name = widget_type_new();              */
+            /*  or one of the variations given in create_functions in g2c_widget.c */
+            
               create_string = g2c_widget_create_string( widget );
 
               if( NULL != create_string )
@@ -2202,7 +2225,7 @@ output_widget_create( g2cWidget *widget,
                   fprintf( file, (char *)  create_string, NULL );
                   g_free( create_string );
                 }              
-            }
+//            }
 
           if( NULL != widget->parent )
             {
@@ -2213,7 +2236,7 @@ output_widget_create( g2cWidget *widget,
                 }
               else if( g_type_is_a( widget->klass, GTK_TYPE_MENU_ITEM ) )
                 {
-                  /* Handle a menu item */
+                  /* Handle the connection of a menu item to its parent */
                   output_menu_item( widget, file );
 
                 }
@@ -2493,8 +2516,8 @@ output_widget_create( g2cWidget *widget,
                       }                           
             }
             
-        }
-    }
+        
+    
 
   /* Write out the properties */
 
@@ -2541,9 +2564,9 @@ output_widget_create( g2cWidget *widget,
       output_attributes ( widget, file );
   }
   
-  if( !properties_only )
+  
     /* This provides a way to get the owning class from this widget */
-    {
+    
       if (widget->internal == FALSE) {
          fprintf( file,
                "\tg_object_set_data (G_OBJECT (gui->%s), \"owner\", owner);\n\n",
@@ -2551,19 +2574,19 @@ output_widget_create( g2cWidget *widget,
       }
      
       /* Recursively handle the children of this widget */
-      children = g_list_first( widget->children );
+//      children = g_list_first( widget->children );
+//
+//      while( ( NULL != children ) && ( recurse_levels > 0 ) )
+//        {
+//          /* Call this function recursively. */
+//          output_widget_create( children->data, file );
+//
+//          children = g_list_next( children );
+//        }
 
-      while( ( NULL != children ) && ( recurse_levels > 0 ) )
-        {
-          /* Call this function recursively. */
-          output_widget_create( children->data, file, recurse_levels, properties_only );
-
-          children = g_list_next( children );
-        }
-
-      recurse_levels--;
+//      recurse_levels--;
       
-    }
+    
 
   if( NULL != func_name ) g_free( func_name );
 }
