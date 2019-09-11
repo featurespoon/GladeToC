@@ -166,8 +166,8 @@ static g2cCreateFunction create_functions[] =
       { NULL },
       create_gtk_button },
 
-    { "GtkCheckButton", "gtk_check_button_new_with_label (\"\")",
-      { NULL },
+    { "GtkCheckButton", "gtk_check_button_new_with_label (\"%s\")",
+      { "label", NULL },
       NULL },
 
     { "GtkCheckMenuItem", "gtk_check_menu_item_new_with_label (%s)",
@@ -527,7 +527,7 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkMenuItem", "stock_item" },
     { "GtkMenuItem", "stock_icon" },
     { "GtkMenuItem", "icon" },
-    { "GtkMenuButton", "popover" },
+//    { "GtkMenuButton", "popover" },
     { "GtkMessageDialog", "buttons" },
     { "GtkMessageDialog", "message_type" },
     { "GtkMessageDialog", "use_markup" },
@@ -4060,24 +4060,24 @@ create_gtk_pixmap( g2cWidget *widget )
 
 void create_gtk_popover( g2cWidget *widget )
 {
-gchar *relative_to = NULL;
-gchar *main_type = NULL;
+//gchar *relative_to = NULL;
+//gchar *main_type = NULL;
 
-    relative_to = g2c_widget_get_property( widget, "relative_to" );
-    main_type = g2c_transform_name( MAIN_WINDOW, NT_TYPENAME );
-    if (relative_to != NULL) {
-        fprintf( CURRENT_FILE,
-               "\tgui->%s = (GtkPopover*) gtk_popover_new (GTK_WIDGET ( ((%s*)owner)->gui->%s ));\n",
-               widget->name, main_type, relative_to);  
-        fprintf( CURRENT_FILE,
-                "\tgtk_menu_button_set_popover(GTK_MENU_BUTTON( ((%s*)owner)->gui->%s ), GTK_WIDGET(gui->%s) );\n",
-                main_type, relative_to, widget->name);
-    } else {
+    //relative_to = g2c_widget_get_property( widget, "relative_to" );
+    //main_type = g2c_transform_name( MAIN_WINDOW, NT_TYPENAME );
+    //if (relative_to != NULL) {
+    //    fprintf( CURRENT_FILE,
+    //           "\tgui->%s = (GtkPopover*) gtk_popover_new (GTK_WIDGET ( ((%s*)owner)->gui->%s ));\n",
+     //          widget->name, main_type, relative_to);  
+    //    fprintf( CURRENT_FILE,
+    //            "\tgtk_menu_button_set_popover(GTK_MENU_BUTTON( ((%s*)owner)->gui->%s ), GTK_WIDGET(gui->%s) );\n",
+    //            main_type, relative_to, widget->name);
+    //} else {
         fprintf( CURRENT_FILE,
                "\tgui->%s = (GtkPopover*) gtk_popover_new (NULL);\n",
                widget->name);
-        g_message("YOU NEED TO ENTER the widget (button) which is 'relative to' this popover %s\n", widget->name);
-    } 
+    //    g_message("YOU NEED TO ENTER the widget (button) which is 'relative to' this popover %s\n", widget->name);
+    //} 
 }
 
 void create_gtk_popovermenu( g2cWidget *widget )
@@ -5272,8 +5272,9 @@ g2c_widget_add_action_widget( g2cWidget *widget,
 g2cActionWidget * action_widget = g_new0( g2cActionWidget, 1 );
 
   action_widget->button_name = g_strdup(button_name);
-  action_widget->responseid = g_strdup(response);        
-
+  action_widget->responseid = g_strdup(response);
+  
+  g_message("add action widget: %s response: %s\n", button_name, response);
   widget->action_widgets = g_list_append( widget->action_widgets, action_widget ); 
 
 }

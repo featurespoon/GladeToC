@@ -14,10 +14,6 @@
 #include "g2c_widget.h"
 
 
-#ifdef USE_GNOME
-#include <gnome.h>
-#endif
-
 #define RECURSE_ALL   G_MAXINT
 #define RECURSE_NONE  0
 
@@ -73,8 +69,6 @@ static void       handle_file_compare( gchar *temp_file_name, gchar *file_name )
 
 xmlNode  *     set_first_object(xmlNode *root_element );
 
-/* Callbacks */
-static void       output_radio_group ( gpointer data, gpointer user_data );
 
 static void
 init_types( g2cDoc *doc )
@@ -287,7 +281,6 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkMessageDialog") == 0)  || 
           (strcmp(widget->klass_name, "GtkAppChooserDialog") == 0) ||
           (strcmp(widget->klass_name, "GtkOffscreenWindow") == 0) ||
-          (strcmp(widget->klass_name, "GtkPopover") == 0) ||
           (strcmp(widget->klass_name, "GtkPopoverMenu") == 0)) {
           widget->associates = associates;
           associates = NULL;
@@ -300,7 +293,8 @@ g2c_doc_output( g2cDoc *doc )
       if (strcmp(widget->klass_name, "GtkAccelGroup") == 0) {
           accel_widgets = g_list_append(accel_widgets, widget);
       }
-      if (strcmp(widget->klass_name, "GtkMenu") == 0) {
+      if ( (strcmp(widget->klass_name, "GtkMenu") == 0) ||
+		   (strcmp(widget->klass_name, "GtkPopover") == 0) )	  {
           popups = g_list_append(popups, widget);
       }
       run = g_list_next(run);
@@ -712,26 +706,7 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
       if( node == NULL )  break;  // POP because no more property or child nodes
       doc->current = node;
     }  /* while node is not NULL */
-
-  /* Post-processing */
-
-  /* If this was a GtkRadioMenuItem, look for groups */
-/*
-  if( g_type_is_a( widget->klass, GTK_TYPE_RADIO_MENU_ITEM ) )
-    {
-      if( NULL != g2c_widget_get_property( widget, "group" ) )
-        {
-          g2c_widget_add_radio_group( parent,
-                                      spaces_to_ulines( g2c_widget_get_property( widget, "group" ) ) );
-        }
-      else
-        {
-          g_message( "No radio group found for %s\n", widget->name );
-        }
-    }
-  else  */
-    
-
+ 
   return widget;
 }
 
@@ -1222,7 +1197,6 @@ output_widget_gui_h( g2cWidget *main_widget, g2cDoc *doc )
    * #define WIDGET_NAME_GUI_H
    *
    * #include <gtk/gtk.h>
-   * #include <gnome.h> // if Gnome enabled
    *
    * typedef struct tag_WidgetNameGui
    * {
@@ -1489,12 +1463,6 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
       run = run->next;
   }  
 
-  /* Accelerator Declarations  e.g. guint menuitem1_key = 0; */
-  //output_accelerator_declarations( main_widget, file );
-
-  /* FocusTarget Accelerator Declarations */
-  //output_focus_accelerator_declarations( main_widget, file );
-
   /* WidgetNameGui *gui = g_new0( WidgetNameGui, 1 ); */
   fprintf( file, "%sGui *gui = g_new0 (%sGui, 1);\n", type_name, type_name );
   fprintf( file, "\n" );
@@ -1634,8 +1602,6 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
   fclose( file );
   CURRENT_FILE = NULL;
   
-  //handle_file_compare( temp_file_name, file_name );
-
   g_free( file_name );
   //g_free( make_name );
     
@@ -1651,7 +1617,6 @@ output_widget_h( g2cWidget *main_widget, g2cDoc *doc )
   gchar *std_name   = NULL;
   gchar *type_name  = NULL;
   gchar *dialogue_type_name  = NULL;
-  //gchar *make_name  = NULL;
   g2cWidget *widget = NULL;
   GList *run        = NULL;  
   
@@ -1683,7 +1648,7 @@ output_widget_h( g2cWidget *main_widget, g2cDoc *doc )
    */
 
   file_name = g_strconcat( DIR_PREFIX, "/", main_widget->name, ".h", NULL );
-  //make_name = g_strconcat( main_widget->name, ".h", NULL);  
+
       
   file = fopen( file_name, "w" );
   if (file == NULL) {
@@ -1900,9 +1865,6 @@ g2cWidget *dialogue_widget = NULL;
   /* Get the transformed name for the widget */
   type_name = g2c_transform_name( widget->name, NT_TYPENAME );   
   
-  //fprintf( file, "%s *%s_create (void)\n", type_name, widget->name );
-  //fprintf( file, "{\n" );
-  //fprintf( file, "\t%s *%s = g_new0 (%s, 1);\n", type_name, widget->name, type_name );
   fprintf( file,
            "\t%s->gui = %s_gui_create ((gpointer) %s);\n",
            widget->name,
@@ -1925,8 +1887,6 @@ g2cWidget *dialogue_widget = NULL;
            dialogue_widget->name );
       run = g_list_next(run);
   }   
-  //fprintf( file, "\treturn %s;\n", widget->name );
-  //fprintf( file, "}\n\n" );
   fprintf( file, "void %s_destroy (%s *%s)\n", widget->name, type_name, widget->name );
   fprintf( file, "{\n" );
   fprintf( file, "\tgtk_widget_destroy (GTK_WIDGET(%s->gui->%s));\n",
@@ -2057,9 +2017,7 @@ output_widget_c( g2cWidget *main_widget, g2cDoc *doc )
       run = g_list_next(run);
   }    
   fprintf( file, "\n" );
-  
-  //output_data_create(doc, main_widget, file);
-  
+    
   output_signal_handler( doc, main_widget, file );
   
   /*  For GtkMenu etc.  */
@@ -2121,9 +2079,6 @@ output_widget_c( g2cWidget *main_widget, g2cDoc *doc )
   g_free( file_name );
   g_free( type_name );
   fclose( CURRENT_FILE );    
-
-  /* Clean up */
-  //g_free( make_name );  
     
 }   /* end output_widget_c  */
 
@@ -2196,20 +2151,6 @@ output_widget_create( g2cWidget *widget,
            widget->name );
 #endif
 
-/*
-  if( NULL != widget->parent )
-    {
-        if( g_type_is_a( widget->parent->klass, GTK_TYPE_BUTTON ) )   
-        if( strcmp( widget->klass_name, "GtkRadioButton" ) == 0 ||
-            strcmp( widget->klass_name, "GtkToggleButton" ) == 0 ||
-            strcmp( widget->klass_name, "GtkCheckButton" ) == 0 ||
-            strcmp( widget->klass_name, "GtkButton" ) == 0 )
-          properties_only = FALSE;   // was TRUE why do this?
-      //if ( strcmp( widget->klass_name, "GtkTreeSelection" ) == 0 ) 
-      //    properties_only = TRUE;
-    }
-*/
-
   if( !properties_only )
     {
         {
@@ -2248,16 +2189,6 @@ output_widget_create( g2cWidget *widget,
                   /* Handle a menu item */
                   output_menu_item( widget, file );
 
-/*
-                  if( (g_type_is_a( widget->klass, GTK_TYPE_RADIO_MENU_ITEM )) && 
-                          (g2c_widget_get_property( widget, "group" ) != NULL)  )
-                    {
-                      fprintf( file,
-                               "\tgui->%s = gtk_radio_menu_item_group (GTK_RADIO_MENU_ITEM(gui->%s));\n",
-                               g2c_widget_get_property( widget, "group" ),
-                               widget->name );
-                    }
-*/
                 }
               else if( g_type_is_a( widget->parent->klass, GTK_TYPE_TOOLBAR ) )
                 {
@@ -2413,7 +2344,7 @@ output_widget_create( g2cWidget *widget,
                       fprintf( file,
                                "\tgtk_grid_attach (GTK_GRID (gui->%s ), \n"
                                "\t                  GTK_WIDGET(gui->%s ),\n"
-                               "\t                  %d, %d, %d, %d);",                               
+                               "\t                  %d, %d, %d, %d);\n",                               
                                widget->parent->name,
                                widget->name,
                                widget->packing.grid.left_attach,
@@ -2544,7 +2475,6 @@ output_widget_create( g2cWidget *widget,
       proplist = proplist_start(widget);
       propmore = proplist_readnext(&proplist, &key, &value);
       while (propmore == TRUE) {
-          //g_message("From proplist for %s %s %s\n", widget->name, key, value);
           g2c_widget_create_arg_cb(key, value, widget);
           propmore = proplist_readnext(&proplist, &key, &value);      
       }
@@ -2593,22 +2523,6 @@ output_widget_create( g2cWidget *widget,
                widget->name );
       }
      
-
-/*
-      if( strcmp( widget->klass_name, "GtkMenu" ) != 0 )
-        {
-          if( !g_type_is_a( widget->klass        , GTK_TYPE_MENU_ITEM ) ||
-              g_type_is_a( widget->parent->parent->klass, GTK_TYPE_COMBO_BOX_TEXT ) )
-          
-            if( NULL == g2c_widget_get_property( widget, "visible" ) )
-              {
-                fprintf( file,
-                         "\tgtk_widget_show (GTK_WIDGET (gui->%s));\n\n",
-                         widget->name );
-              }
-        }
-*/
-
       /* Recursively handle the children of this widget */
       children = g_list_first( widget->children );
 
@@ -2621,18 +2535,6 @@ output_widget_create( g2cWidget *widget,
         }
 
       recurse_levels--;
-
-      /* Handle options that are only usuable AFTER the children have been output */
-      
-/*
-      proplist = proplist_start(widget);
-      propmore = proplist_readnext(&proplist, &key, &value);
-      while (propmore == TRUE) {
-         g2c_widget_output_after_children_cb ( key, value, widget );
-         propmore = proplist_readnext(&proplist, &key, &value);      
-      }
-      proplist_end(proplist);
-*/
       
     }
 
@@ -2776,15 +2678,6 @@ gchar * temp_name;
            "\t%-20s *%s;\n",
            widget->klass_name,
            widget->name );
-  
-/*
-  if (strcmp(widget->klass_name, "GtkAccelGroup") == 0) {  
-     fprintf( CURRENT_FILE,
-               "\t%-20s *%s;\n",
-               "GtkAccelGroup",
-               widget->name ); 
-  }
-*/
 
   if( g_type_is_a( widget->klass, GTK_TYPE_MENU ) )
     {
@@ -3044,9 +2937,7 @@ GString *blue = NULL;
                  "\t\tpango_attr_strikethrough_new( TRUE ));\n"
                  );
     } else return;
-//    fprintf( file,
-//                 "\tpango_attr_list_insert(%s_attrlist, %s_%s_attr);\n",
-//                 widget->name, widget->name, name);
+                widget->name, widget->name, name);
 }
 
 static void
@@ -3054,19 +2945,10 @@ output_menu( g2cWidget *widget, FILE* file )
 {
   if( g_type_is_a( widget->parent->klass, GTK_TYPE_MENU_ITEM ) )
     {
-      if( CURRENT_PROJECT->gnome_support ) return;
-
       fprintf( file,
                "\tgtk_menu_item_set_submenu (GTK_MENU_ITEM (gui->%s), GTK_WIDGET (gui->%s));\n",
                widget->parent->name,
                widget->name );
-
-/*
-      fprintf( file,
-               "\tgui->%s_accel_group = gtk_menu_ensure_uline_accel_group (GTK_MENU (gui->%s));\n",
-               widget->name,
-               widget->name );
-*/
     }
 }
 
@@ -3140,16 +3022,6 @@ g2cWidget *child = NULL;
      }
     
 }
-
-static void
-output_radio_group( gpointer data, gpointer user_data )
-{
-  gchar *radio_group = (gchar *) data;
-
-  fprintf( CURRENT_FILE, "\t%-20s *%s;\n", "GSList", radio_group );
-}
-
-
 
 static void
 handle_file_compare( gchar *temp_file_name, gchar *file_name )
@@ -3245,9 +3117,6 @@ output_main_file ( g2cDoc *doc, gchar *file_name )
       g_error("Could not open file %s\n", file_name);
       return;
   }
-  //fprintf (file, "#ifdef HAVE_CONFIG_H\n");
-  //fprintf (file, "#  include <config.h>\n");
-  //fprintf (file, "#endif\n\n");
   fprintf (file, "/*                Generated from %s                 */\n\n", doc->project->source_file);	
   fprintf (file, "#include <gtk/gtk.h>\n");	    
   fprintf (file, "#include \"%s.h\"\n", widget->name);
@@ -3264,7 +3133,6 @@ output_main_file ( g2cDoc *doc, gchar *file_name )
   fprintf (file, "  textdomain (PACKAGE);\n");
   fprintf (file, "#endif\n");
   fprintf (file, "\n");      	
-  //fprintf (file, "  gtk_set_locale ();\n");
   fprintf (file, "  gtk_init (&argc, &argv);\n\n");
   	
   fprintf( file, "  %s = g_new0 (%s, 1);\n", widget->name, type_name );
