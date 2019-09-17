@@ -103,6 +103,7 @@ typedef struct tag_g2cWidget
     GList                *accel_widgets;
     GList                *radio_groups;
     GList                *columns;
+    GList                *table;
     GList                *css_classes;
     GList                *popups;
     GList                *comboboxtext_items;
@@ -139,6 +140,20 @@ typedef struct tag_g2cRequires
     guint used;
 }
 g2cRequires;
+
+typedef struct tag_g2cColumn
+{
+    gchar *col_name;
+    gchar *col_type;
+}
+g2cColumn;
+
+typedef struct tag_g2cColdata
+{
+    gint col_no;
+    gchar *col_value;
+}
+g2cColdata;
 
 typedef struct tag_g2cProject
   {

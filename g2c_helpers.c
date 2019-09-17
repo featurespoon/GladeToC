@@ -363,6 +363,10 @@ g2c_transform_name( gchar *name, NameTransform transform )
            result = strdup("G_TYPE_STRING");
            break;
        }
+       if ( strcmp(name, "GdkPixbuf") == 0 ) {
+           result = strdup("GDK_TYPE_PIXBUF");
+           break;
+       }
        s_result = g_string_new( "" );
        i  =  1;
        
@@ -637,6 +641,64 @@ gchar buffer[2048];
   fclose( file1 );
 
 }
+
+void
+coldata_add(GList **row, gint col_no, gchar* value)
+{
+g2cColdata *coldata = g_new0( g2cColdata, 1); 
+    coldata->col_no = col_no;
+    coldata->col_value = g_strdup(value);
+    *row = g_list_append(*row, (gpointer) coldata);
+}
+
+void 
+row_add(g2cWidget *widget, GList *row)
+{
+    widget->table = g_list_append(widget->table, (gpointer) row);
+}
+
+gchar*
+make_column_value(g2cWidget *widget, gint pos, gchar *value)
+{
+GList *coltype = NULL;    
+g2cColumn *column;
+gint count = 0;
+gchar *type = NULL;
+
+    coltype = g_list_first(widget->columns);
+    while (coltype != NULL) {
+        column = (g2cColumn *) coltype->data;
+        if (count == pos) {
+           type = column->col_type;
+           break;
+        }
+        count++;
+        coltype = g_list_next(coltype);
+    }
+    g_assert(NULL != type);
+    if ( ( strcmp(type,"gint") == 0 ) ||
+         ( strcmp(type,"guint") == 0 ) ) {
+        return value;
+    } else if ( strcmp(type,"gboolean") == 0 ) {
+        return g2c_get_bool_s(value);
+    } else if ( strcmp(type,"gchararray") == 0 ) {
+        return g2c_stringify(value);
+    } else if ( strcmp(type,"GdkPixbuf") == 0 ) {
+        return "pixbuf";
+    }
+    g_message("make_column_value: unexpected data type %s \n", type );
+    return "";
+}
+
+void 
+column_add(g2cWidget *main, gchar *col_name, gchar *col_type)
+{
+g2cColumn *col = g_new0( g2cColumn, 1);
+    col->col_name = g_strdup(col_name);
+    col->col_type = g_strdup(col_type);    
+    main->columns = g_list_append(main->columns, (gpointer) col);
+}
+
 void
 register_add(g2cWidget *main, gchar* name, g2cWidget *widget)
 {
@@ -720,6 +782,23 @@ guint max_level = 0;
     return max_level;
 }
 
+g2cRegister *
+find_widget_by_name(GList *register_list, gchar* name)
+{
+GList *register_item;
+g2cRegister *reg;
+
+    register_item = g_list_first( register_list );
+    while ( NULL != register_item ) {
+        reg = (g2cRegister *) register_item->data;        
+        if ( strcmp(reg->name,name) == 0 ) {
+            return reg;
+        }
+        register_item = g_list_next( register_item );   
+    } 
+    return NULL;    
+}
+
 void
 analyse_requirements(g2cWidget *main)
 {
@@ -730,15 +809,24 @@ g2cRegister *reg;
 gchar *current = NULL;
 guint result;
 guint max_level;
+GList *popup_item;
+g2cWidget *popup_widget;
 
-    //print_out_requires(main->requires);
-    detect_cycles(main);  // and if necessary remove one requires to break the cycle.
-    //g_message("\nrequires after detect cycles\n");
-    //print_out_requires(main->requires);
+    detect_cycles(main);  // and if necessary remove one requires to break the cycle
+    
     register_list = g_list_first( main->regster );
     reg = (g2cRegister *) register_list->data;
     current = reg->name;
     reg->level = Level;
+    
+    popup_item = g_list_first(main->popups);
+    while (popup_item != NULL) {
+        popup_widget = (g2cWidget *) popup_item->data;
+        reg = find_widget_by_name( main->regster, popup_widget->name );
+        reg->level = 1;
+        popup_item = g_list_next( popup_item );
+    }
+    
     /*  top level widget now set up  */
 
     /*  scan requires list for requires entries where current is the required widget  */
@@ -993,9 +1081,6 @@ gchar *cycle;
         //g_message("End of chain\n");
         requires_item = g_list_next( requires_item );
     }
-    //g_message("\ncontents of detect_copy after detect\n");
-    //print_out_requires(detect_copy);
-   // g_message("end of contents of detect_copy\n\n");
     g_list_free_full(detect_copy, free_requires);
     g_list_free_full(requires_copy, free_requires);
     return FALSE;

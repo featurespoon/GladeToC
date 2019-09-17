@@ -33,6 +33,7 @@ void button_label( g2cWidget *widget );
 void button_relief ( g2cWidget *widget );
 void button_use_stock( g2cWidget *widget );
 void calendar_set_display_options( g2cWidget *widget );
+void cell_background_rgb ( g2cWidget *widget );
 void colour_chooser_rgba ( g2cWidget *widget );
 void common_tooltip_markup ( g2cWidget *widget );
 void curve_set_range_handler( g2cWidget *widget );
@@ -47,6 +48,7 @@ void foreground_rgb ( g2cWidget *widget );
 void frame_label_xalign ( g2cWidget *widget );
 void frame_label_yalign ( g2cWidget *widget );
 void icon_size ( g2cWidget *widget );
+void iconview_selection_mode ( g2cWidget *widget );
 void image_from_pixbuf( g2cWidget *widget );
 void image_from_resource( g2cWidget *widget );
 void image_from_stock( g2cWidget *widget );
@@ -58,6 +60,7 @@ void label_label_ellipsize ( g2cWidget *widget );
 void label_ellipsize ( g2cWidget *widget );
 void layout_height ( g2cWidget *widget );
 void layout_width ( g2cWidget *widget );
+void listbox_selection_mode ( g2cWidget *widget );
 void menu_bar_direction( g2cWidget *widget );
 void menu_item_use_stock ( g2cWidget *widget );
 void menu_label( g2cWidget *widget );
@@ -97,30 +100,31 @@ void create_gtk_box( g2cWidget *widget );
 void create_gtk_button( g2cWidget *widget );
 void create_gtk_cellrenderertoggle( g2cWidget *widget );
 void create_gtk_combobox( g2cWidget *widget );
-void create_gtk_pixmap( g2cWidget *widget );
 void create_gtk_entry( g2cWidget *widget );
+void create_gtk_file_chooser ( g2cWidget *widget );
+void create_gtk_file_chooser_button ( g2cWidget *widget );
 void create_gtk_frame( g2cWidget *widget );
 //void create_gtk_hscale( g2cWidget *widget );
-void create_gtk_spin_button( g2cWidget *widget );
+void create_gtk_iconview( g2cWidget *widget );
 void create_gtk_link_button( g2cWidget *widget );
-void create_gtk_scale( g2cWidget *widget );
-void create_gtk_scale_button( g2cWidget *widget );
 void create_gtk_liststore( g2cWidget *widget );
 void create_gtk_lockbutton( g2cWidget *widget );
 void create_gtk_message_dialog ( g2cWidget *widget  );
+void create_gtk_model_button( g2cWidget *widget );
 void create_gtk_paned ( g2cWidget *widget );
-void create_gtk_treeview( g2cWidget *widget );
+void create_gtk_pixmap( g2cWidget *widget );
+void create_gtk_popover( g2cWidget *widget );
+void create_gtk_popovermenu( g2cWidget *widget );
 void create_gtk_radio_button( g2cWidget *widget );
 void create_gtk_radio_menu_item( g2cWidget *widget );
 void create_gtk_radio_tool_button ( g2cWidget *widget );
-void create_gtk_file_chooser ( g2cWidget *widget );
-void create_gtk_file_chooser_button ( g2cWidget *widget );
-void create_gtk_tree_selection( g2cWidget *widget );
+void create_gtk_scale( g2cWidget *widget );
+void create_gtk_scale_button( g2cWidget *widget );
 void create_gtk_scrollbar( g2cWidget *widget );
 void create_gtk_scrolled_window( g2cWidget *widget );
-void create_gtk_popover( g2cWidget *widget );
-void create_gtk_popovermenu( g2cWidget *widget );
-void create_gtk_model_button( g2cWidget *widget );
+void create_gtk_spin_button( g2cWidget *widget );
+void create_gtk_tree_selection( g2cWidget *widget );
+void create_gtk_treeview( g2cWidget *widget );
 //void create_gtk_vscale( g2cWidget *widget );
 void create_gtk_window( g2cWidget *widget );
 
@@ -165,8 +169,8 @@ static g2cCreateFunction create_functions[] =
     { "GtkButton", NULL,
       { NULL },
       create_gtk_button },
-
-    { "GtkCheckButton", "gtk_check_button_new_with_label (\"%s\")",
+      
+    { "GtkCheckButton", "gtk_check_button_new_with_label (%s)",
       { "label", NULL },
       NULL },
 
@@ -246,6 +250,10 @@ static g2cCreateFunction create_functions[] =
 //      { NULL },
 //      create_gtk_hscale },
 
+    { "GtkIconView", NULL,
+      { NULL },
+      create_gtk_iconview },
+      
     { "GtkImage", "gtk_image_new_from_pixbuf (NULL)",
       {  NULL },
       NULL },
@@ -294,9 +302,9 @@ static g2cCreateFunction create_functions[] =
       { NULL },
       create_gtk_popover },
       
-    { "GtkPopoverMenu", NULL,
+    { "GtkPopoverMenu", "gtk_popover_menu_new ()",
       { NULL },
-      create_gtk_popovermenu },    
+      NULL },    
 
     { "GtkPreview", "gtk_preview_new (%s)",
       { "type", NULL },
@@ -450,10 +458,7 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkButton", "focus_on_click" }, /*  widget  */
     { "GtkButtonBox", "child_min_height" },
     { "GtkButtonBox", "child_ipad_y" },
-    { "GtkCalendar", "show_day_names" },
-    { "GtkCalendar", "no_month_change" },
-    { "GtkCalendar", "show_week_numbers" },
-    { "GtkCalendar", "week_start_monday" },
+//    { "GtkCalendar", "week_start_monday" },
     { "GtkCellRendererText", "placeholder_text" },
     { "GtkCellRendererToggle", "active" },
     { "GtkCellRendererSpin", "climb_rate" },
@@ -762,12 +767,54 @@ static g2cSpecialHandler special_handlers[] =
       { NULL },
       NULL,
        set_gtk_button_box_style},
+      
+    { "GtkCalendar", "day",
+      "\tg_object_set(G_OBJECT(gui->%s),\"day\", %s, NULL);\n",
+      { "name", "day", NULL },
+      NULL,
+      NULL },  
+       
+    { "GtkCalendar", "month",
+      "\tg_object_set(G_OBJECT(gui->%s),\"month\", %s, NULL);\n",
+      { "name", "month", NULL },
+      NULL,
+      NULL }, 
+      
+    { "GtkCalendar", "year",
+      "\tg_object_set(G_OBJECT(gui->%s),\"year\", %s, NULL);\n",
+      { "name", "year", NULL },
+      NULL,
+      NULL }, 
+      
+    { "GtkCalendar", "no_month_change",
+      "\tgtk_calendar_set_display_options(GTK_CALENDAR(gui->%s),GTK_CALENDAR_NO_MONTH_CHANGE);\n",
+      { "name", NULL },
+      NULL,
+      NULL }, 
+      
+    { "GtkCalendar", "show_day_names",
+      "\tgtk_calendar_set_display_options(GTK_CALENDAR(gui->%s),GTK_CALENDAR_SHOW_DAY_NAMES);\n",
+      { "name", NULL },
+      NULL,
+      NULL },  
+      
+    { "GtkCalendar", "show_details",
+      "\tgtk_calendar_set_display_options(GTK_CALENDAR(gui->%s),GTK_CALENDAR_SHOW_DETAILS);\n",
+      { "name", NULL },
+      NULL,
+      NULL },  
 
     { "GtkCalendar", "show_heading",
+      "\tgtk_calendar_set_display_options(GTK_CALENDAR(gui->%s),GTK_CALENDAR_SHOW_HEADING);\n",
+      { "name", NULL },
       NULL,
-      { NULL },
+      NULL },
+      
+    { "GtkCalendar", "show_week_numbers",
+      "\tgtk_calendar_set_display_options(GTK_CALENDAR(gui->%s),GTK_CALENDAR_SHOW_WEEK_NUMBERS);\n",
+      { "name", NULL },
       NULL,
-      calendar_set_display_options },
+      NULL },   
        
     { "GtkCellRendererSpin", "adjustment",
        "\tg_object_set(G_OBJECT(gui->%s),\"adjustment\", gui->%s, NULL);\n",
@@ -811,6 +858,12 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        NULL},  
        
+    { "GtkCellRenderer", "cell_background_rgba",
+       NULL,
+       { NULL },
+       NULL,
+       cell_background_rgb}, 
+       
     { "GtkCellRendererSpin", "background_rgba",
        NULL,
        { NULL },
@@ -821,7 +874,7 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        { NULL },
        NULL,
-       foreground_rgb},     
+       foreground_rgb},    
        
     { "GtkCellRendererText", "editable",
        "\tg_object_set(G_OBJECT(gui->%s),\"editable\", %s, NULL);\n",
@@ -835,7 +888,7 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        NULL}, 
        
-    { "GtkCellRendererText", "cell_background_rgba",
+    { "GtkCellRendererText", "background_rgba",
        NULL,
        { NULL },
        NULL,
@@ -919,7 +972,7 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        foreground_rgb},   
        
-    { "GtkCellRendererAccel", "cell_background_rgba",
+    { "GtkCellRendererAccel", "background_rgba",
        NULL,
        { NULL },
        NULL,
@@ -949,24 +1002,24 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        NULL}, 
        
-    { "GtkCellRendererToggle", "cell_background_rgba",
+//    { "GtkCellRendererToggle", "cell_background_rgba",
+//       NULL,
+//       { NULL },
+//       NULL,
+//       background_rgb}, 
+       
+//     { "GtkCellRendererPixbuf", "cell_background_rgba",
+//       NULL,
+//       { NULL },
+//       NULL,
+//       background_rgb},  
+       
+    { "GtkCellRendererCombo", "background_rgba",
        NULL,
        { NULL },
        NULL,
        background_rgb}, 
-       
-     { "GtkCellRendererPixbuf", "cell_background_rgba",
-       NULL,
-       { NULL },
-       NULL,
-       background_rgb},  
-       
-    { "GtkCellRendererCombo", "cell_background_rgba",
-       NULL,
-       { NULL },
-       NULL,
-       background_rgb}, 
-       
+      
     { "GtkCellRendererCombo", "foreground_rgba",
        NULL,
        { NULL },
@@ -1357,6 +1410,48 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },
       
+    { "GtkIconView", "model",
+      "\tgtk_icon_view_set_model(GTK_ICON_VIEW(gui->%s),  GTK_TREE_MODEL(gui->%s));\n",
+      { "name", "model", NULL },
+      NULL,
+      NULL },  
+      
+    { "GtkIconView", "selection_mode",
+       NULL,
+      { NULL },
+      NULL,
+      iconview_selection_mode }, 
+      
+    { "GtkIconView", "hadjustment",
+       "\tgtk_scrollable_set_hadjustment(GTK_SCROLLABLE(gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
+       { "name", "hadjustment", NULL },
+        NULL,
+        NULL },
+            
+    { "GtkIconView", "vadjustment",
+       "\tgtk_scrollable_set_vadjustment(GTK_SCROLLABLE(gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
+       { "name", "vadjustment", NULL },
+        NULL,
+        NULL },
+               
+    { "GtkIconView", "hscroll_policy",
+       "\tgtk_scrollable_set_hscroll_policy(GTK_SCROLLABLE(gui->%s), GTK_SCROLL_NATURAL);\n",
+       { "name", NULL },
+        NULL,
+        NULL },             
+               
+    { "GtkIconView", "vscroll_policy",
+       "\tgtk_scrollable_set_vscroll_policy(GTK_SCROLLABLE(gui->%s), GTK_SCROLL_NATURAL);\n",
+       { "name", NULL },
+        NULL,
+        NULL }, 
+               
+    { "GtkIconView", "item_orientation",
+       "\tgtk_icon_view_set_item_orientation(GTK_ICON_VIEW(gui->%s), GTK_ORIENTATION_HORIZONTAL);\n",
+       { "name", NULL },
+        NULL,
+        NULL },            
+      
     { "GtkImageMenuItem", "use_stock",
       NULL,
       { NULL },
@@ -1465,6 +1560,17 @@ static g2cSpecialHandler special_handlers[] =
       "\tgtk_scrollable_set_vadjustment (GTK_SCROLLABLE (gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
       { "name", "vadjustment", NULL },
       NULL },
+      
+    { "GtkLevelBar", "mode",
+      "\tgtk_level_bar_set_mode (GTK_LEVEL_BAR (gui->%s), GTK_LEVEL_BAR_MODE_DISCRETE);\n",
+      { "name",  NULL },
+      NULL }, 
+      
+    { "GtkListBox", "selection_mode",
+      NULL,
+      { NULL },
+      NULL,
+      listbox_selection_mode },   
       
     { "GtkListBoxRow", "action_name",
       NULL,
@@ -2096,7 +2202,7 @@ static g2cSpecialHandler special_handlers[] =
       tree_selection_mode }, 
       
     { "GtkTreeView", "model",
-      "\tgtk_tree_view_set_model(GTK_TREE_VIEW(gui->%s),  gui->%s);\n",
+      "\tgtk_tree_view_set_model(GTK_TREE_VIEW(gui->%s),  GTK_TREE_MODEL(gui->%s));\n",
       { "name", "model", NULL },
       NULL,
       NULL },
@@ -2317,7 +2423,7 @@ static g2cCommonParam common_params[] =
     {"show_editor", FALSE, NULL, NULL},
     {"content_type", FALSE, NULL, NULL},
     {"left_padding", FALSE, NULL, NULL},
-    {"selection_mode", TRUE, "GTK_SELECTION", "GtkListBox"},
+//    {"selection_mode", TRUE, "GTK_SELECTION", "GtkListBox"},
     {"justification", FALSE, "GTK_JUSTIFY", "GtkTextView" },
     {"wrap_mode", FALSE, "GTK_WRAP", "GtkTextView" },
     {"header_relief", FALSE, "GTK_RELIEF", "GtkToolItemGroup" },
@@ -2437,7 +2543,35 @@ gchar *cell_rgb = NULL;
     fprintf( CURRENT_FILE,
             "\tg_object_set(G_OBJECT(gui->%s),\"background-rgba\", &rgb_%s, NULL);\n",
             widget->name, widget->name);
-    } else {
+    } // else {
+//        rgb = g2c_widget_get_property( widget, "cell_background_rgba" );
+//        if (rgb != NULL ) {
+//            fprintf( CURRENT_FILE,
+//                    "\tgdk_rgba_parse(&rgb_%s, \"%s\");\n",
+//                    widget->name, rgb);
+//            fprintf( CURRENT_FILE,
+//                    "\tg_object_set(G_OBJECT(gui->%s),\"cell-background-rgba\", &rgb_%s, NULL);\n",
+//                    widget->name, widget->name);
+//        }
+    //}
+}
+
+
+void cell_background_rgb ( g2cWidget *widget )
+{
+gchar *rgb = NULL;
+gchar *cell_rgb = NULL;
+
+    g_assert( NULL != widget );
+//    rgb = g2c_widget_get_property( widget, "background_rgba" );
+//    if (rgb != NULL) {
+//    fprintf( CURRENT_FILE,
+//            "\tgdk_rgba_parse(&rgb_%s, \"%s\");\n",
+//            widget->name, rgb);
+//    fprintf( CURRENT_FILE,
+//            "\tg_object_set(G_OBJECT(gui->%s),\"background-rgba\", &rgb_%s, NULL);\n",
+//            widget->name, widget->name);
+//    } else {
         rgb = g2c_widget_get_property( widget, "cell_background_rgba" );
         if (rgb != NULL ) {
             fprintf( CURRENT_FILE,
@@ -2447,7 +2581,7 @@ gchar *cell_rgb = NULL;
                     "\tg_object_set(G_OBJECT(gui->%s),\"cell-background-rgba\", &rgb_%s, NULL);\n",
                     widget->name, widget->name);
         }
-    }
+    //}
 }
 
 void font_size_scale ( g2cWidget *widget )
@@ -2550,6 +2684,32 @@ guint i = 0;
             "\tgtk_scale_button_set_icons(GTK_SCALE_BUTTON(gui->%s), (const gchar **) g_strsplit(\"%s\", \":\", -1));\n",
             widget->name, list_icons);
     
+}
+
+void listbox_selection_mode ( g2cWidget *widget )
+{
+    gchar *mode = NULL;
+    gchar *enum_mode = NULL;
+    
+    mode = g2c_widget_get_property( widget, "selection_mode" );
+    enum_mode = make_enumeral("GTK_SELECTION", mode);
+    fprintf( CURRENT_FILE,
+        "\tgtk_list_box_set_selection_mode(GTK_LIST_BOX(gui->%s),  %s);\n",  
+            widget->name,enum_mode);
+    g_free( enum_mode );
+}
+
+void iconview_selection_mode ( g2cWidget *widget )
+{
+    gchar *mode = NULL;
+    gchar *enum_mode = NULL;
+    
+    mode = g2c_widget_get_property( widget, "selection_mode" );
+    enum_mode = make_enumeral("GTK_SELECTION", mode);
+    fprintf( CURRENT_FILE,
+        "\tgtk_icon_view_set_selection_mode(GTK_ICON_VIEW(gui->%s),  %s);\n",  
+            widget->name,enum_mode);
+    g_free( enum_mode );
 }
 
 void volume_button_size ( g2cWidget *widget )
@@ -4082,27 +4242,27 @@ void create_gtk_popover( g2cWidget *widget )
 
 void create_gtk_popovermenu( g2cWidget *widget )
 {
-gchar *relative_to = NULL;
-gchar *main_type = NULL;
-
-    relative_to = g2c_widget_get_property( widget, "relative_to" );
-    main_type = g2c_transform_name( MAIN_WINDOW, NT_TYPENAME );
-    if (relative_to != NULL) {
+//gchar *relative_to = NULL;
+//gchar *main_type = NULL;
+//
+//    relative_to = g2c_widget_get_property( widget, "relative_to" );
+//    main_type = g2c_transform_name( MAIN_WINDOW, NT_TYPENAME );
+//    if (relative_to != NULL) {
         fprintf( CURRENT_FILE,
                "\tgui->%s = (GtkPopoverMenu*) gtk_popover_menu_new ();\n",
                widget->name );  
-        fprintf( CURRENT_FILE,
-                "\tgtk_popover_set_relative_to(GTK_POPOVER(gui->%s), GTK_WIDGET ( ((%s*)owner)->gui->%s ));\n",
-                widget->name, main_type, relative_to );
-        fprintf( CURRENT_FILE,
-                "\tgtk_menu_button_set_popover(GTK_MENU_BUTTON( ((%s*)owner)->gui->%s ), GTK_WIDGET(gui->%s) );\n",
-                main_type, relative_to, widget->name);
-    } else {
-        fprintf( CURRENT_FILE,
-               "\tgui->%s = (GtkPopover*) gtk_popover_menu_new (NULL);\n",
-               widget->name);
-        g_message("YOU NEED TO ENTER the widget (button) which is 'relative to' this popovermenu %s\n", widget->name);
-    } 
+//        fprintf( CURRENT_FILE,
+//                "\tgtk_popover_set_relative_to(GTK_POPOVER(gui->%s), GTK_WIDGET ( ((%s*)owner)->gui->%s ));\n",
+//                widget->name, main_type, relative_to );
+//        fprintf( CURRENT_FILE,
+//                "\tgtk_menu_button_set_popover(GTK_MENU_BUTTON( ((%s*)owner)->gui->%s ), GTK_WIDGET(gui->%s) );\n",
+//                main_type, relative_to, widget->name);
+//    } else {
+//        fprintf( CURRENT_FILE,
+//               "\tgui->%s = (GtkPopover*) gtk_popover_menu_new (NULL);\n",
+//               widget->name);
+//        g_message("YOU NEED TO ENTER the widget (button) which is 'relative to' this popovermenu %s\n", widget->name);
+//    } 
 }
 
 
@@ -4331,6 +4491,7 @@ create_gtk_liststore( g2cWidget *widget )
 {  /*  for GtkListStore and GtkTreeStore  */
   g_assert( NULL != widget );
   GList *run = widget->columns;
+  g2cColumn *column;
   gchar *type;
   guint ncols = 0;
   gboolean first = TRUE;
@@ -4340,8 +4501,10 @@ create_gtk_liststore( g2cWidget *widget )
       ncols++;
       if (first == FALSE) {
           g_string_append_c(coltypes, ',');
-      }      
-      type = g2c_transform_name ((gchar *) run->data, NT_CAPITALISE);
+      }  
+      column = (g2cColumn *) run->data;
+      //type = g2c_transform_name ((gchar *) run->data, NT_CAPITALISE);
+      type = g2c_transform_name ((gchar *) column->col_type, NT_CAPITALISE);
       g_string_append(coltypes, type);
       g_free(type);
       first = FALSE;
@@ -4410,6 +4573,85 @@ create_gtk_treeview( g2cWidget *widget )
       fprintf( CURRENT_FILE,
            "\tgui->%s = (GtkTreeView *) gtk_tree_view_new_with_model(GTK_TREE_MODEL(gui->%s));\n", 
               widget->name, model);
+  }
+  
+}
+
+g2cWidget *
+find_top_widget(g2cWidget *widget)
+{
+g2cWidget *parent = widget->parent;
+g2cWidget *child = NULL;
+    child = widget;
+    while (parent != NULL) {
+        child = parent;
+        parent = parent->parent;        
+    }
+    return child;
+}
+
+g2cWidget *
+find_liststore(g2cWidget *widget, gchar *model)
+{
+g2cWidget *associate = NULL;
+GList *run;
+run = g_list_first(widget->associates);
+      while (run != NULL) {
+         associate = (g2cWidget *) run->data;
+         if ( (strcmp(associate->klass_name,"GtkListStore)") == 0 ) &&
+              (strcmp(associate->name,model) == 0) ) {
+             break;
+         }
+         run = g_list_next( run ); 
+      }
+      return associate;
+}
+
+void 
+create_gtk_iconview( g2cWidget *widget )
+{
+g2cWidget *parent = NULL;
+g2cWidget *associate = NULL;
+GList *run;
+g2cColumn *column;
+//gchar *coltype = NULL;
+gint colno;
+gboolean bTextfound = FALSE;
+
+  g_assert( NULL != widget );
+  gchar *model = g2c_widget_get_property( widget, "model" );
+  if (model == NULL) {
+      fprintf( CURRENT_FILE,
+           "\tgui->%s = (GtkIconView *) gtk_icon_view_new();\n", 
+              widget->name);
+  } else {
+      fprintf( CURRENT_FILE,
+           "\tgui->%s = (GtkIconView *) gtk_icon_view_new_with_model(GTK_TREE_MODEL(gui->%s));\n", 
+              widget->name, model);
+      // navigate around to find the widget of the iconview's liststore
+      parent = find_top_widget(widget);
+      associate = find_liststore(parent, model);
+      g_assert ( NULL != associate );
+      run = g_list_first(associate->columns);
+      /*   The column numbers are the column numbers of the ListStore.  */
+      colno = 0;
+      while (run != NULL) {
+          //coltype = (gchar *) run->data;
+          column = (g2cColumn *) run->data;
+          if (strcmp(column->col_type, "GdkPixbuf") == 0 ) {
+              fprintf( CURRENT_FILE,
+                      "\tgtk_icon_view_set_pixbuf_column (GTK_ICON_VIEW(gui->%s), %d);\n",
+                      widget->name, colno);
+          }
+          if ( (strcmp(column->col_type, "gchararray") == 0 ) && (bTextfound == FALSE) ) {
+              fprintf( CURRENT_FILE,
+                      "\tgtk_icon_view_set_text_column (GTK_ICON_VIEW(gui->%s), %d);\n",
+                      widget->name, colno);
+              bTextfound = TRUE;
+          }
+          colno++;
+          run = g_list_next( run ); 
+      }
   }
   
 }
@@ -4768,15 +5010,17 @@ create_gtk_box( g2cWidget *widget )
                      widget->name,
                      widget->klass_name,
                      parent_name );
+          } else {  /* for GtkDialog there is an internal GtkBox and inside that a GtkButtonBox   */
+          /*  Access to the ButtonBox is discouraged. Buttons are added using gtk_dialog_add_button. */
+          /*  gtk_dialog_get_action_area is deprecated. */
+//          parent_name = g_strdup(widget->parent->parent->name);
+//          fprintf( CURRENT_FILE,
+//                   "\tgui->%s = (%s*) gtk_dialog_get_action_area (GTK_DIALOG(gui->%s));\n\n",
+//                   widget->name,
+//                   widget->klass_name,
+//                   parent_name );
           }
-          /* This is deprecated. It's automatically set up. Only buttons are to be added to it. */
-/*          parent_name = g_strdup(widget->parent->parent->name);
-          fprintf( CURRENT_FILE,
-                   "\tgui->%s = (%s*) gtk_dialog_get_action_area (GTK_DIALOG(gui->%s));\n",
-                   widget->name,
-                   widget->klass_name,
-                   parent_name );
-*/
+
       }      
     } 
   
@@ -4891,6 +5135,7 @@ g2c_widget_new( gchar *class_name )
   widget->mime_types = NULL;
   widget->attributes = NULL;
   widget->columns = NULL;
+  widget->table = NULL;
   widget->css_classes = NULL;
   widget->action_widgets = NULL;
   widget->internal = FALSE;
@@ -5082,6 +5327,9 @@ g2c_widget_new( gchar *class_name )
       else if ( strcmp( widget->klass_name, "GtkActionBar" ) == 0)   widget->klass = GTK_TYPE_ACTION_BAR;
       else if ( strcmp( widget->klass_name, "GtkSearchBar" ) == 0)   widget->klass = GTK_TYPE_SEARCH_BAR;
       else if ( strcmp( widget->klass_name, "GtkInfoBar" ) == 0)   widget->klass = GTK_TYPE_INFO_BAR;
+      else if ( strcmp( widget->klass_name, "GtkLevelBar" ) == 0 ) widget->klass = GTK_TYPE_LEVEL_BAR;
+      else if ( strcmp( widget->klass_name, "GtkCalendar" ) == 0 ) widget->klass = GTK_TYPE_CALENDAR;
+      else if ( strcmp( widget->klass_name, "GtkIconView" ) == 0 ) widget->klass = GTK_TYPE_ICON_VIEW;
       else
         {
           g_message( "Unhandled class, %s, set to GtkWidget\n", widget->klass_name );
@@ -5276,7 +5524,7 @@ g2cActionWidget * action_widget = g_new0( g2cActionWidget, 1 );
   action_widget->button_name = g_strdup(button_name);
   action_widget->responseid = g_strdup(response);
   
-  g_message("add action widget: %s response: %s\n", button_name, response);
+  //g_message("add action widget: %s response: %s\n", button_name, response);
   widget->action_widgets = g_list_append( widget->action_widgets, action_widget ); 
 
 }

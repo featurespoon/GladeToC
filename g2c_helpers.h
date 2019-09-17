@@ -148,6 +148,18 @@ file_exists(gchar* file_name);
 void
 g2c_copy_file(gchar *input, gchar *output);
 
+void 
+column_add(g2cWidget *main, gchar *col_name, gchar *col_type);
+
+void
+coldata_add(GList **collist, gint col_no, gchar* value);
+
+gchar*
+make_column_value(g2cWidget *widget, gint pos, gchar *value);
+
+void 
+row_add(g2cWidget *widget, GList *row);
+
 void
 register_add(g2cWidget *main, gchar* name, g2cWidget *widget);
 
@@ -171,6 +183,9 @@ scan_properties_for_requires(g2cWidget *main, g2cWidget *widget);
 
 void 
 scan_packing_for_requires(g2cWidget *main, g2cWidget *widget);
+
+g2cRegister *
+find_widget_by_name(GList *register_list, gchar* name);
 
 void
 analyse_requirements(g2cWidget *main);
