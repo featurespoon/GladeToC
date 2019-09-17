@@ -22,11 +22,11 @@ GtkButton, GtkEntry, GtkSearchEntry, GtkSpinButton, GtkToggleButton, GtkCheckBut
 
 Display
 
-GtkLabel, GtkAccelLabel, GtkImage, GtkTextView, GtkTreeView (both Lists and Trees), GtkProgressBar, GtkSpinner, GtkMenu, GtkDrawingArea, GtkInfoBar
+GtkLabel, GtkAccelLabel, GtkImage, GtkTextView, GtkTreeView (both Lists and Trees), GtkIconView, GtkProgressBar, GtkSpinner, GtkMenu, GtkCalendar, GtkDrawingArea, GtkInfoBar
 
 Miscellaneous
 
-GtkListStore, GtkTreeStore, GtkTextBuffer, GtkAccelGroup, GtkAdjustment, GtkEntryCompletion, GtkFileFilter
+GtkListStore, GtkTreeStore, GtkEntryBuffer, GtkTextBuffer, GtkAccelGroup, GtkAdjustment, GtkEntryCompletion, GtkFileFilter
 
 Coverage of the properties in Glade's Common tab (common to most widgets) is complete.
 
