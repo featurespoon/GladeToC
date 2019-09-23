@@ -2226,6 +2226,10 @@ GList *row  = NULL;
 GList *cols = NULL;
 GList *col  = NULL;
 g2cColdata *coldata;
+gchar *column_value = NULL;
+gint pixbufcol = -1;
+gchar *pixbuffile = NULL;
+gboolean pixbuffirst = TRUE;
 
     populater = g_strdup_printf("populate_%s", widget->name);
     if ((strcmp(widget->klass_name, "GtkListStore") == 0) ||
@@ -2258,11 +2262,24 @@ g2cColdata *coldata;
               col = g_list_first(cols);
               while (col != NULL) {
                   coldata = (g2cColdata *) col->data;
-                  fprintf( file, "\t\t%d,%s,\n", coldata->col_no, 
-                          make_column_value(widget, coldata->col_no, coldata->col_value) ); 
+                  column_value = make_column_value(widget, coldata->col_no, coldata->col_value);
+                  if (strcmp(column_value,"pixbuf") != 0) {
+                    fprintf( file, "\t\t%d,%s,\n", coldata->col_no, column_value); 
+                  } else {
+                      pixbufcol = coldata->col_no;
+                      pixbuffile = coldata->col_value;
+                  }
                   col = g_list_next(col);
               }
               fprintf( file, "\t\t-1);\n\n");
+              if (pixbufcol >= 0) {
+                  if (pixbuffirst == TRUE) {
+                    fprintf( file, "GdkPixbuf *pixbuf1;\nGError *pixbuf1_error = NULL;\n");
+                    pixbuffirst = FALSE;
+                  }
+                  fprintf( file, "\tpixbuf1 = gdk_pixbuf_new_from_file(\"%s\", &pixbuf1_error);\n", pixbuffile);
+                  fprintf( file, "\tgtk_list_store_set (store, &iter, %d, pixbuf1, -1);\n\n", pixbufcol);                  
+              }
               row = g_list_next(row);
           }          
           fprintf( file, "\treturn;\n");
@@ -2447,6 +2464,14 @@ output_widget_create( g2cWidget *widget,
                            widget->parent->name,
                            widget->name);
                   }
+              }
+              else if (( strcmp( widget->parent->klass_name, "GtkFlowBoxChild" ) == 0 ) && 
+                       ( widget->parent->parent != NULL) &&  
+                       ( strcmp( widget->parent->parent->klass_name, "GtkFlowBox" ) == 0 ) ) {
+                     fprintf( file,
+                        "\tgtk_flow_box_insert(GTK_FLOW_BOX(gui->%s), GTK_WIDGET(gui->%s), -1);\n",
+                        widget->parent->parent->name,
+                        widget->name);
               }
               /* Pack the widget, if necessary */
              else if( !widget->klass || !widget->parent->klass ) {

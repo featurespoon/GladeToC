@@ -42,6 +42,7 @@ void entry_markup ( g2cWidget *widget );
 void entry_markup2 ( g2cWidget *widget );
 void entry_primary_pixbuf ( g2cWidget *widget );
 void entry_secondary_pixbuf ( g2cWidget *widget );
+void flowbox_selection_mode( g2cWidget *widget );
 void font_size_points ( g2cWidget *widget );
 void font_size_scale ( g2cWidget *widget );
 void foreground_rgb ( g2cWidget *widget );
@@ -354,6 +355,10 @@ static g2cCreateFunction create_functions[] =
       { NULL },
       NULL },
       
+    { "GtkToggleButton", "gtk_toggle_button_new_with_label (%s)",
+      { "label", NULL },
+      NULL },  
+      
     { "GtkToolButton", "gtk_tool_button_new (NULL, NULL)",
       { NULL },
       NULL },
@@ -576,6 +581,7 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkSpinButton", "show_emoji_icon" },
     { "GtkTextView", "hscroll_policy" },
     { "GtkTextView", "vscroll_policy" },
+    { "GtkToggleButton", "label"},
     { "GtkToolbar", "orientation" },  
     { "GtkToolbar", "type" },
     { "GtkTreeView", "can_focus"},
@@ -1079,6 +1085,12 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "draw_indicator", NULL },
       NULL,
       NULL },
+      
+    { "GtkCheckButton", "label",
+      NULL,
+      { NULL },
+      NULL,
+      button_label },  
 
     { "GtkCheckMenuItem", "always_show_toggle",
       "\tgtk_check_menu_item_set_show_toggle (GTK_CHECK_MENU_ITEM (gui->%s), %s);\n",
@@ -1349,6 +1361,12 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "filter", NULL },
       NULL,
       NULL },
+      
+    { "GtkFlowBox", "selection_mode",
+       NULL,
+      { NULL },
+      NULL,
+      flowbox_selection_mode },   
       
      { "GtkFontButton", "font",
       "\tgtk_font_chooser_set_font (GTK_FONT_CHOOSER (gui->%s), %s);\n",
@@ -1778,6 +1796,12 @@ static g2cSpecialHandler special_handlers[] =
       "\tGTK_ADJUSTMENT (GTK_LAYOUT (gui->%s)->vadjustment)->step_increment = %s;\n",
       { "name", "vstep", NULL },
       NULL },
+      
+    { "GtkMenuButton", "label",
+      NULL,
+      { NULL },
+      NULL,
+      button_label },  
         
     { "GtkMenuButton", "popup",
       "\tgtk_menu_button_set_popup (GTK_MENU_BUTTON (gui->%s), GTK_WIDGET (gui->%s));\n",
@@ -1790,12 +1814,6 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "popover", NULL },
       NULL,
       NULL },  
-      
-    { "GtkToggleButton", "active",
-      "\tgtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (gui->%s), %s);\n",
-      { "name", "active", NULL, NULL, NULL },
-      NULL,
-      NULL },
 
     { "GtkMenuItem", "right_justify",
       "\tgtk_menu_item_right_justify (GTK_MENU_ITEM (gui->%s));\n",
@@ -1880,6 +1898,12 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "inverted", NULL },
       NULL,
       NULL },
+      
+    { "GtkRadioButton", "label",
+      NULL,
+      { NULL },
+      NULL,
+      button_label },  
       
     { "GtkRadioToolButton", "is_important",
       "\tgtk_tool_item_set_is_important (GTK_TOOL_ITEM (gui->%s), %s);\n",
@@ -2102,6 +2126,12 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "$text", NULL },
       NULL,
       NULL },    /*  text_buffer_text */
+      
+    { "GtkToggleButton", "active",
+      "\tgtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (gui->%s), %s);\n",
+      { "name", "active", NULL, NULL, NULL },
+      NULL,
+      NULL },  
       
    { "GtkToolButton", "is_important",
       "\tgtk_tool_item_set_is_important (GTK_TOOL_ITEM (gui->%s), %s);\n",
@@ -2684,6 +2714,19 @@ guint i = 0;
             "\tgtk_scale_button_set_icons(GTK_SCALE_BUTTON(gui->%s), (const gchar **) g_strsplit(\"%s\", \":\", -1));\n",
             widget->name, list_icons);
     
+}
+
+void flowbox_selection_mode( g2cWidget *widget )
+{
+    gchar *mode = NULL;
+    gchar *enum_mode = NULL;
+    
+    mode = g2c_widget_get_property( widget, "selection_mode" );
+    enum_mode = make_enumeral("GTK_SELECTION", mode);
+    fprintf( CURRENT_FILE,
+        "\tgtk_flow_box_set_selection_mode(GTK_FLOW_BOX(gui->%s),  %s);\n",  
+            widget->name,enum_mode);
+    g_free( enum_mode );    
 }
 
 void listbox_selection_mode ( g2cWidget *widget )
@@ -5221,6 +5264,7 @@ g2c_widget_new( gchar *class_name )
       } else if (strcmp( widget->klass_name, "GtkSearchBar" ) == 0) {  widget->klass = GTK_TYPE_SEARCH_BAR;
       } else if (strcmp( widget->klass_name, "GtkTextBuffer" ) == 0) {  widget->klass = GTK_TYPE_TEXT_BUFFER;
       } else if (strcmp( widget->klass_name, "GtkTextView" ) == 0) {  widget->klass = GTK_TYPE_TEXT_VIEW;
+      } else if (strcmp( widget->klass_name, "GtkFlowBoxChild" ) == 0) {  widget->klass = GTK_TYPE_FLOW_BOX_CHILD;
       } else  if ( NULL == g_type_class_peek( widget->klass ) )
                  g_message( "Invalid type: %s\n", widget->klass_name );
  }
@@ -5330,6 +5374,8 @@ g2c_widget_new( gchar *class_name )
       else if ( strcmp( widget->klass_name, "GtkLevelBar" ) == 0 ) widget->klass = GTK_TYPE_LEVEL_BAR;
       else if ( strcmp( widget->klass_name, "GtkCalendar" ) == 0 ) widget->klass = GTK_TYPE_CALENDAR;
       else if ( strcmp( widget->klass_name, "GtkIconView" ) == 0 ) widget->klass = GTK_TYPE_ICON_VIEW;
+      else if ( strcmp( widget->klass_name, "GtkFlowBox" ) == 0 ) widget->klass = GTK_TYPE_FLOW_BOX;
+      else if ( strcmp( widget->klass_name, "GtkFlowBoxChild" ) == 0 ) widget->klass = GTK_TYPE_FLOW_BOX_CHILD;
       else
         {
           g_message( "Unhandled class, %s, set to GtkWidget\n", widget->klass_name );
