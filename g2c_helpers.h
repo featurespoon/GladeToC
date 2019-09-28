@@ -70,6 +70,8 @@ gboolean has_underscore (gchar *string);
 
 gboolean isnumber(gchar *text);
 
+gboolean isalphanum(gchar *text);
+
 gchar *remove_prefix(gchar * string);
 
 //void extract_signal(gchar **event, guint *key, GdkModifierType *modifier, gchar *name);
@@ -204,9 +206,6 @@ find_in_layer(GList *layer_list, gchar *required);
 
 gboolean
 find_required(g2cWidget *main, gchar *requiring, gchar *misplaced);
-
-void 
-demotion(g2cWidget *main, gchar* misplaced, guint level);
 
 guint
 get_max_register_level(g2cWidget *main);

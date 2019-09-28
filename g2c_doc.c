@@ -1151,11 +1151,14 @@ parse_accel( g2cDoc *doc )
 
   attr = attr->next;
   
+  if (attr != NULL) {   
   /* Parse the name and class */
-  g_assert( strcmp( get_attr_node_name( attr ), "modifiers" ) == 0 );
-  g2c_accel_set_modifiers( accel, get_attr_node_text( attr ) );
-  g_assert( NULL != accel->modifiers );
-
+    g_assert( strcmp( get_attr_node_name( attr ), "modifiers" ) == 0 );
+    g2c_accel_set_modifiers( accel, get_attr_node_text( attr ) );
+    g_assert( NULL != accel->modifiers );
+  } else {
+    g2c_accel_set_modifiers( accel, "");  
+  }
   return accel;
 }
 
@@ -2148,6 +2151,7 @@ output_widget_c( g2cWidget *main_widget, g2cDoc *doc )
       run = g_list_next(run);
   } 
   
+  fprintf( file, "\t/*    Accelerator handlers   */\n" );
   clear_signal_list ();
   run = main_widget->accel_widgets;
   while (run != NULL) {
@@ -2300,6 +2304,7 @@ output_widget_create( g2cWidget *widget,
   gchar     *create_string    = NULL;
   GList     *children         = NULL;
   gchar     *pack_type        = NULL;
+  gboolean  properties_only = FALSE;
   
   g2cProplist *proplist = NULL;
   gboolean    propmore = TRUE;
@@ -2349,6 +2354,13 @@ output_widget_create( g2cWidget *widget,
             /*              The standard create string is simply:                 */
             /*                 gui->widget_name = widget_type_new();              */
             /*  or one of the variations given in create_functions in g2c_widget.c */
+  
+            if (strcmp(widget->klass_name, "AtkObject") == 0)
+            {
+                properties_only = TRUE;
+            }
+      if (!properties_only) {
+          
             
               create_string = g2c_widget_create_string( widget );
 
@@ -2656,7 +2668,7 @@ output_widget_create( g2cWidget *widget,
                       }                           
             }
             
-        
+      }    
     
 
   /* Write out the properties */

@@ -1,27 +1,37 @@
 cmake_minimum_required (VERSION 2.8.4)
 cmake_policy(SET CMP0015 NEW)
+IF (DEFINED WIN32)
 cmake_policy(SET CMP0081 OLD)
+ENDIF (DEFINED WIN32)
 project (g2cGui C)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 pkg_check_modules(XML REQUIRED libxml-2.0)
+IF (DEFINED WIN32)
 set(INC_DIRS "${GTK3_INCLUDE_DIRS}")
 string(REPLACE "C:" "../../.." INC_DIRS "${INC_DIRS}")
 set (XML_DIRS "${XML_INCLUDE_DIRS}")
 string(REPLACE "C:" "../../.." XML_DIRS "${XML_DIRS}")
 include_directories( ${INC_DIRS} ${XML_DIRS})
+ELSE (DEFINED WIN32)
+include_directories( ${GTK3_INCLUDE_DIRS} ${XML_INCLUDE_DIRS} )
+ENDIF (DEFINED WIN32)
 set(LIB_DIRS "${GTK3_LIBRARY_DIRS}")
-string(REPLACE "C:" "../.." LIB_DIRS "${LIB_DIRS}")
 set(XML_LIB_DIRS "${XML_LIBRARY_DIRS}")
+IF (DEFINED WIN32)
+string(REPLACE "C:" "../.." LIB_DIRS "${LIB_DIRS}")
 string(REPLACE "C:" "../.." XML_LIB_DIRS "${XML_LIB_DIRS}")
+ENDIF (DEFINED WIN32)
 link_directories(${LIB_DIRS} ${XML_LIB_DIRS})
 link_libraries(${GTK3_LIBRARIES} ${XML_LIBRARIES})
 add_definitions(${GTK3_CFLAGS_OTHER})
 set(OPTIONS "-Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-comment -Wno-unused-function -Wno-unused-value -Wno-pointer-sign -g")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${OPTIONS}")
+IF (DEFINED WIN32)
 set(EXE_OPTIONS "-mwindows")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${EXE_OPTIONS}")
 add_definitions( -DWIN32 )
+ENDIF (DEFINED WIN32)
 SET(CORE g2c.c
          g2c_accel.c
 		 g2c_doc.c
@@ -44,6 +54,7 @@ SET(GUI g2cGui_main.c
 			control.c
 			)
 add_library(lib2 OBJECT ${GUI} )
+IF (DEFINED WIN32)
 set (CMAKE_RC_COMPILER "/c/msys64/mingw64/bin/windres.exe")
 set (RC_SOURCE g2c.rc)
 set (RC_OBJ ${RC_SOURCE}.obj)
@@ -56,3 +67,11 @@ add_executable( g2cGui
 		${RC_OBJ}
 		$<TARGET_OBJECTS:lib2>
 		$<TARGET_OBJECTS:lib1>)
+ELSE (DEFINED WIN32)
+add_executable( g2cGui 
+		g2c_message_gui.c
+		$<TARGET_OBJECTS:lib2>
+		$<TARGET_OBJECTS:lib1>)
+ENDIF (DEFINED WIN32)
+
+		

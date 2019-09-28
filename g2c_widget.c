@@ -2138,6 +2138,12 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "is_important", NULL },
       NULL,
       NULL },
+      
+   { "GtkToolButton", "icon_name",
+      "\tgtk_tool_button_set_icon_name(GTK_TOOL_BUTTON (gui->%s), %s);\n",
+     { "name", "$icon_name", NULL },
+     NULL,
+     NULL},   
      
    { "GtkToolButton", "stock_id",
       "\tgtk_tool_button_set_icon_name(GTK_TOOL_BUTTON (gui->%s), %s);\n",
@@ -5020,7 +5026,15 @@ create_gtk_box( g2cWidget *widget )
        
     } else {   // This is a box internal to a GtkDialog or GtkAssistant or GtkInfoBar
       if (strcmp(widget->klass_name, "GtkBox") == 0) {
-          if (strcmp(widget->parent->klass_name, "GtkDialog") == 0) {
+          if ( (strcmp(widget->parent->klass_name, "GtkDialog") == 0) ||
+               (strcmp(widget->parent->klass_name, "GtkAboutDialog") == 0) ||
+               (strcmp(widget->parent->klass_name, "GtkAppChooserDialog") == 0) ||
+               (strcmp(widget->parent->klass_name, "GtkColorChooserDialog") == 0) ||
+               (strcmp(widget->parent->klass_name, "GtkFileChooserDialog") == 0)  ||
+               (strcmp(widget->parent->klass_name, "GtkFontChooserDialog") == 0)  ||
+               (strcmp(widget->parent->klass_name, "GtkRecentChooserDialog") == 0)  ||
+               (strcmp(widget->parent->klass_name, "GtkMessageDialog") == 0) ) {
+
             parent_name = g_strdup(widget->parent->name);
             fprintf( CURRENT_FILE,
                    "\tgui->%s = (%s*) gtk_dialog_get_content_area (GTK_DIALOG(gui->%s));\n\n",
@@ -5868,6 +5882,10 @@ g2c_widget_create_closure_connect(g2cSignal * signal, g2cWidget *accel_widget)
   //GdkModifierType accel_mods = 0;
   gchar *accel_key_str = NULL;
   gchar *accel_mods_str = NULL;
+  g2cRegister *reg = NULL;
+  g2cWidget  *main_widget = CURRENT_PROJECT->main_widget;
+  g2cWidget  *object = NULL;
+  guint signal_id = 0;  
 
 	extract_signal(&event, &accel_key_str, &accel_mods_str, signal->name);
 
@@ -5876,16 +5894,46 @@ g2c_widget_create_closure_connect(g2cSignal * signal, g2cWidget *accel_widget)
                          "\t\t\tGTK_ACCEL_VISIBLE,\n"
                          "\t\t\tg_cclosure_new(G_CALLBACK(%s), NULL, NULL));\n\n",
 		accel_widget->name, accel_key_str, accel_mods_str, signal->handler);
-
-	fprintf (CURRENT_FILE, 
-	"\tgtk_widget_add_accelerator (GTK_WIDGET(gui->%s), \"%s\", gui->%s,\n"
-                         "\t\t\t%s, %s,\n"   // GdkModifierType
-                         "\t\t\tGTK_ACCEL_VISIBLE);\n\n",
-		MAIN_WINDOW, "activate_default", accel_widget->name, accel_key_str, accel_mods_str);
-        //signal->object, "clicked", accel_widget->name, accel_key_str, accel_mods_str);
-        //signal->object, event, accel_widget->name, accel_key_str, accel_mods_str);
+        if (signal->object != NULL) {
+            // find widget klass for signal object
+            reg = find_widget_by_name(main_widget->regster, signal->object);
+            object = reg->widget;
+            // try a few events. Any other likely possibilities?
+            signal_id = g_signal_lookup("activate", object->klass);
+            if (signal_id != 0) { 
+                g_free( event );
+                event = g_strdup("activate");
+            } else {
+                signal_id = g_signal_lookup("clicked", object->klass);
+                if (signal_id != 0) { 
+                    g_free( event );
+                    event = g_strdup("clicked");
+                } else {
+                    signal_id = g_signal_lookup("toggled", object->klass);
+                    if (signal_id != 0) { 
+                        g_free( event );
+                        event = g_strdup("toggled");
+                    }
+                }
+            }
+            fprintf (CURRENT_FILE, 
+            "\tgtk_widget_add_accelerator (GTK_WIDGET(gui->%s), \"%s\", gui->%s,\n"
+                             "\t\t\t%s, %s,\n"   // GdkModifierType
+                             "\t\t\tGTK_ACCEL_VISIBLE);\n\n",
+            //signal->object, "activate", accel_widget->name, accel_key_str, accel_mods_str);
+             signal->object, event, accel_widget->name, accel_key_str, accel_mods_str);
+        } else {
+            g_message("For Accelerator Group %s, in the Signals tab, the keystroke %s has no 'user data' (widget id). Using %s.\n", 
+                    accel_widget->name, signal->name, MAIN_WINDOW );
+            fprintf (CURRENT_FILE, 
+            "\tgtk_widget_add_accelerator (GTK_WIDGET(gui->%s), \"%s\", gui->%s,\n"
+                             "\t\t\t%s, %s,\n"   // GdkModifierType
+                             "\t\t\tGTK_ACCEL_VISIBLE);\n\n",
+                    MAIN_WINDOW, "activate_default", accel_widget->name, accel_key_str, accel_mods_str);
+        }
 
 /* For accel_group property of a widget - ignore, put with accel group signal.  */
+  g_free( event );
   g_free( accel_key_str );
   g_free( accel_mods_str );
 }
@@ -5973,7 +6021,7 @@ g2c_widget_create_closure_handler( g2cSignal * signal,
            "{\n"
            "\t/* %s *%s = (%s*) g_object_get_data (G_OBJECT (acceleratable), \"owner\"); */\n"
            "\n"         
-          "\treturn;\n"
+          "\treturn TRUE;\n"
            "}\n\n",           
            window_class,  /* Window1 */
            window->name,  /* window1 */
@@ -6450,6 +6498,7 @@ g2c_widget_create_accel_cb( gpointer data,
   gchar *handler = NULL;
   g2cSignal *signal2 = NULL;
   gchar *accel_group_name = NULL;
+  gchar *modifiers = NULL;
 
   g_assert( NULL != accel );
   g_assert( NULL != widget );
@@ -6485,8 +6534,8 @@ g2c_widget_create_accel_cb( gpointer data,
   handler = find_signal_handler(widget, accel->signal);
   
   if (handler == NULL ) {
-      g_message( "No handler found for: %s and event %s\n", widget->name, accel->signal );
-      g_message( "If you create an accelerator for a widget there must be a signal for it to accelerate\n");
+      g_message( "An accelerator %s is set in the Common tab for %s, with event %s, but there's no handler.\n", accel->key,  widget->name, accel->signal );
+      g_message( "  If you create an accelerator for a widget there must be a handler for the signal to accelerate\n");
       return;
   }
   /*  /usr/include/gtk-3.0/gdk/gdkkeysyms.h   */
@@ -6500,6 +6549,11 @@ g2c_widget_create_accel_cb( gpointer data,
 		accel_group, key, accel->modifiers, handler);
 */
   
+  if (strlen(accel->modifiers) == 0) {
+      modifiers = g_strdup("0");
+  } else {
+      modifiers = g_strdup(accel->modifiers);
+  }
   fprintf( CURRENT_FILE,
            "\tgtk_widget_add_accelerator (GTK_WIDGET (gui->%s), \"%s\", %s,\n"
            "\t\t%s, %s,\n"
@@ -6508,8 +6562,9 @@ g2c_widget_create_accel_cb( gpointer data,
            accel->signal,
            accel_group,
            key,
-           accel->modifiers,
+           modifiers,
            "GTK_ACCEL_VISIBLE" );
+  g_free( modifiers );
 
   if ( NULL != accel_group ) g_free( accel_group );
   g_free ( key );

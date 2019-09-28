@@ -270,7 +270,7 @@ parse_source_file( g2cFileParser *parser )
 #ifdef WIN32
   cmd = g_strdup_printf( "C:/msys64/usr/bin/ctags -x --sort=no %s", g_shell_quote(parser->file_name) );
 #else
-  cmd = g_strdup_printf( "ctags -x --sort=no %s 2> /dev/null", g_shell_quote(parser->file_name) );
+  cmd = g_strdup_printf( "ctags -x  %s 2> /dev/null", g_shell_quote(parser->file_name) );
 #endif  
   
   //g_message("Command file: %s\n", cmd);

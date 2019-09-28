@@ -170,6 +170,19 @@ guint len = 0;
     return TRUE;
 }
 
+gboolean 
+isalphanum(gchar *text)
+{
+guint i = 0;
+guint len = 0;
+    if (text == NULL) return FALSE;
+    len = strlen(text);
+    while (i < len) {
+        if (!g_ascii_isalnum(text[i])) return FALSE;            
+        i++;
+    }
+    return TRUE;
+}
 
 gchar *
 remove_prefix(gchar * string)
@@ -210,51 +223,62 @@ guint i;
          return;
      }
      g_assert(strlen(parts[1]) == 0);
-     g_stpcpy(acceler, parts[2]);
-     gtk_accelerator_parse(parts[2], &accelerator_key, &accelerator_mods);
-     fragments = g_strsplit(acceler, ">", -1);
-     if (strlen(fragments[1]) == 0) {  /* if no modifier */
-         *modifierstr = g_strdup("");
-         *keystr = g_strdup_printf( "GDK_KEY_%s", fragments[0] ); 
-     } else {
-         if ((accelerator_mods & GDK_SHIFT_MASK) != 0) {
-             if (*modifierstr == NULL) {
-                *modifierstr = g_strdup("GDK_SHIFT_MASK"); 
+     
+    g_stpcpy(acceler, parts[2]);
+    gtk_accelerator_parse(parts[2], &accelerator_key, &accelerator_mods);
+    if ( (accelerator_key == 0) && (accelerator_mods == 0) ) {
+        g_message("%s does not have a valid keystroke.\n", name);
+        *keystr = g_strdup("");
+        *modifierstr = g_strdup("");
+        return;
+    }
+    fragments = g_strsplit(acceler, ">", -1);
+    if ( (fragments[1] == 0) || (strlen(fragments[1]) == 0) ) {  /* if no modifier */
+        *modifierstr = g_strdup("0");
+        *keystr = g_strdup_printf( "GDK_KEY_%s", fragments[0] ); 
+    } else {
+        if ((accelerator_mods & GDK_SHIFT_MASK) != 0) {
+            if (*modifierstr == NULL) {
+               *modifierstr = g_strdup("GDK_SHIFT_MASK"); 
+            } else {
+                temp = *modifierstr;
+                *modifierstr = g_strjoin (" | ", *modifierstr, "GDK_SHIFT_MASK", NULL);
+                g_free ( temp );
+            }
+        } 
+        if ((accelerator_mods & GDK_CONTROL_MASK) != 0) {
+            if (*modifierstr == NULL) {
+                *modifierstr = g_strdup("GDK_CONTROL_MASK");
+            } else {
+                *modifierstr = g_strjoin (" | ", *modifierstr, "GDK_CONTROL_MASK", NULL);
+            }
+        } 
+        if ((accelerator_mods & GDK_MOD1_MASK) != 0) {
+            if (*modifierstr == NULL) {
+               *modifierstr = g_strdup("GDK_MOD1_MASK");
              } else {
-                 temp = *modifierstr;
-                 *modifierstr = g_strjoin (" | ", *modifierstr, "GDK_SHIFT_MASK", NULL);
-                 g_free ( temp );
+               *modifierstr = g_strjoin (" | ", *modifierstr, "GDK_MOD1_MASK", NULL);
              }
-         } 
-         if ((accelerator_mods & GDK_CONTROL_MASK) != 0) {
-             if (*modifierstr == NULL) {
-                 *modifierstr = g_strdup("GDK_CONTROL_MASK");
-             } else {
-                 *modifierstr = g_strjoin (" | ", *modifierstr, "GDK_CONTROL_MASK", NULL);
-             }
-         } 
-         if ((accelerator_mods & GDK_MOD1_MASK) != 0) {
-             if (*modifierstr == NULL) {
-                *modifierstr = g_strdup("GDK_MOD1_MASK");
-              } else {
-                *modifierstr = g_strjoin (" | ", *modifierstr, "GDK_MOD1_MASK", NULL);
-              }
-         }
-         if ((accelerator_mods & GDK_LOCK_MASK) != 0) {
-             if (*modifierstr == NULL) {        
-               *modifierstr = g_strdup("GDK_LOCK_MASK");
-             } else {
-                *modifierstr = g_strjoin (" | ", *modifierstr, "GDK_LOCK_MASK", NULL);
-             }
-         }
-         if (*modifierstr == NULL) {
-            *modifierstr = g_strdup("GDK_UNKNOWN_MODIFIER");
-         }
-         for (i = 2; fragments[i] != NULL; i++) {}
-         *keystr = g_strdup_printf( "GDK_KEY_%s", fragments[i-1] ); 
-     }
+        }
+        if ((accelerator_mods & GDK_LOCK_MASK) != 0) {
+            if (*modifierstr == NULL) {        
+              *modifierstr = g_strdup("GDK_LOCK_MASK");
+            } else {
+               *modifierstr = g_strjoin (" | ", *modifierstr, "GDK_LOCK_MASK", NULL);
+            }
+        }
+        if (*modifierstr == NULL) {
+            g_message("%s does not have a valid keystroke.\n", name);
+            //*keystr = g_strdup("");
+            *modifierstr = g_strdup("0");
+           //*modifierstr = g_strdup("GDK_UNKNOWN_MODIFIER");
+        }
+        for (i = 2; fragments[i] != NULL; i++) {}
+        *keystr = g_strdup_printf( "GDK_KEY_%s", fragments[i-1] ); 
+    }
+     
      g_strfreev( parts );
-     g_strfreev( fragments );
+     if (fragments != NULL)   g_strfreev( fragments );
 }
 
 void
@@ -876,8 +900,7 @@ gchar *layer_name2;
                 require->used++;               
                 if (returned_level > 0) {                
                     if (returned_level < next_level) {
-                        g_message("  %s demoted\n", require->requiring );
-                       // demotion(main, require->requiring, next_level);
+                        g_message("Re-ordering suggestion: %s needs to be positioned in the Glade file before %s.\n", require->required, require->requiring );                       
                     }
                     (*result)++;
                 }
@@ -897,8 +920,7 @@ gchar *layer_name2;
                 bFound = find_required(main, layer_name1, layer_name2);
                 if (bFound == TRUE) {
                     // demote layer_name1 which requires layer_name2
-                    set_widget_level(main, layer_name1, next_level);
-                    //demotion(main, layer_name1, next_level);   /*  redundant */
+                    set_widget_level(main, layer_name1, next_level);                    
                 }
             }
             layer_item2 = g_list_next( layer_item2 );
@@ -1026,7 +1048,7 @@ gchar *requiring = NULL;
 g2cRequires *require;
 gboolean bFound;
 gchar *cycle;
-GList  *old_requires = NULL;
+//GList  *old_requires = NULL;
 
     require = find_linked_require(requires_copy, next);  // returns g2cRequire where requiring = supplied next
     while (require != NULL) {  
@@ -1037,11 +1059,11 @@ GList  *old_requires = NULL;
         bFound = check_list_contains(chain, required);
         if (bFound == TRUE) {
             //this is a cycle:   remove require from main->requires
-            //print_out_chain(*chain);
-            g_message("Cycle detected: deleted widget %s requiring widget %s\n", requiring, required);
-            old_requires = main->requires;
-            main->requires = list_remove(main->requires, requiring, required); 
-            g_list_free_full(old_requires, free_requires);
+            print_out_chain(*chain);
+            g_message("Cycle detected: suggest removing requirement of widget %s for widget %s\n", requiring, required);
+            //old_requires = main->requires;
+            //main->requires = list_remove(main->requires, requiring, required); 
+            //g_list_free_full(old_requires, free_requires);
             if (requiring != NULL) g_free( requiring );
             return required;
         }
@@ -1073,7 +1095,7 @@ gchar *cycle;
         cycle = build_cycle(&chain, main, detect_copy, requires_copy, require->required);
         if (cycle != NULL) {
             //g_message("   Cycle detected containing %s. \n", cycle);            
-            return TRUE;
+            return FALSE;
         }
         //print_out_chain(chain);
         delete_chain( chain ); 
@@ -1086,32 +1108,6 @@ gchar *cycle;
     return FALSE;
 }
 
-void demotion(g2cWidget *main, gchar* misplaced, guint level)
-{  // demote all items that required the misplaced item
-//GList *temp_list = NULL;
-GList *register_list;
-g2cRegister *reg;
-gchar *temp_item;
-gboolean bFound;
-guint next_level = level + 1;
-    
-/*  go over items so far at the new level */
-    register_list =  g_list_first( main->regster );
-    while ( NULL != register_list ) {
-        reg = (g2cRegister *) register_list->data;
-        if (reg->level == level) {
-           temp_item = reg->name;  // name of item which should be a requiring item
-           // look for  requires item that links temp_item (requiring) to misplaced (required)
-           bFound = find_required(main, temp_item, misplaced);
-           // if found, set level of temp_item to level + 1
-           if (bFound == TRUE) {
-               set_widget_level(main, temp_item, next_level);
-           }           
-        }        
-        register_list = g_list_next( register_list );   
-    }
-}
-/*  used  */
 gboolean
 find_required(g2cWidget *main, gchar *requiring, gchar *misplaced)
 {  // existence of requires item that links requiring item to misplaced (required)
@@ -1139,7 +1135,7 @@ set_widget_level(g2cWidget *main, gchar *name, gint level)
 {   // scanning register list to named item to the level
 GList *register_list;
 g2cRegister *reg;
-guint old_level;
+//guint old_level;
 
     register_list =  g_list_first( main->regster );
     while ( NULL != register_list ) {
@@ -1147,9 +1143,9 @@ guint old_level;
         if (strcmp(reg->name, name) == 0 ) {
             if (reg->level != 0) {
                 //g_message("demotion required for %s\n", name);
-                old_level = reg->level;
-                reg->level = level;
-                return old_level;
+                //old_level = reg->level;
+                //reg->level = level;
+                return reg->level;
             } else {
                 reg->level = level;
                 return level;
@@ -1278,14 +1274,14 @@ g2cProp *prop;
             g_message("menu name property found for %s\n", widget->klass_name );
         }
       }
-      if (strcmp(prop->key,"group") == 0) {      
-        requires_add(main, widget->name, prop->value);
-        if ((strcmp(widget->klass_name, "GtkRadioButton") != 0) &&
-            (strcmp(widget->klass_name, "GtkRadioMenuItem") != 0) &&
-            (strcmp(widget->klass_name, "GtkRadioToolButton") != 0) ) {
-            g_message("group property found for %s\n", widget->klass_name );
-        }
-      }
+//      if (strcmp(prop->key,"group") == 0) {      
+//        requires_add(main, widget->name, prop->value);
+//        if ((strcmp(widget->klass_name, "GtkRadioButton") != 0) &&
+//            (strcmp(widget->klass_name, "GtkRadioMenuItem") != 0) &&
+//            (strcmp(widget->klass_name, "GtkRadioToolButton") != 0) ) {
+//            g_message("group property found for %s\n", widget->klass_name );
+//        }
+//      }
       if (strcmp(prop->key,"buffer") == 0) {      
         requires_add(main, widget->name, prop->value);
         if ((strcmp(widget->klass_name, "GtkEntry") != 0) &&
