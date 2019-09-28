@@ -14,15 +14,15 @@ GtkMessageDialog, GtkAssistant.
 
 Containers
 
-GtkBox, GtkGrid, GtkNotebook, GtkFrame, GtkAspectFrame, GtkListBox, GtkOverlay, GtkMenuBar, GtkToolbar, GtkToolPalette, GtkPaned, GtkButtonBox, GtkLayout, GtkFixed, GtkEventBox, GtkExpander, GtkViewport, GtkScrolledWindow, GtkAlignment, GtkRevealer, GtkSearchBar, GtkHeaderBar, GtkStack, GtkPopupMenu, GtkPopover, GtkActionBar
+GtkBox, GtkGrid, GtkNotebook, GtkFrame, GtkAspectFrame, GtkListBox, GtkOverlay, GtkMenuBar, GtkToolbar, GtkToolPalette, GtkPaned, GtkButtonBox, GtkLayout, GtkFixed, GtkEventBox, GtkExpander, GtkViewport, GtkScrolledWindow, GtkAlignment, GtkRevealer, GtkSearchBar, GtkHeaderBar, GtkStack, GtkPopupMenu, GtkPopover, GtkPopoverMenu, GtkActionBar, GtkFlowBox
 
 Controls
 
-GtkButton, GtkEntry, GtkSearchEntry, GtkSpinButton, GtkToggleButton, GtkCheckButton, GtkRadioButton, GtkMenuButton, GtkSwitch, GtkModelButton, GtkStackSwitcher, GtkComboBox, GtkComboBoxText, GtkFileChooserButton, GtkColorButton, GtkFontButton, GtkLinkButton, GtkScaleButton, GtkVolumeButton, GtkAppChooserButton, GtkScale, GtkScrollbar
+GtkButton, GtkEntry, GtkSearchEntry, GtkSpinButton, GtkToggleButton, GtkCheckButton, GtkRadioButton, GtkMenuButton, GtkSwitch, GtkModelButton, GtkStackSwitcher, GtkStackSidebar, GtkComboBox, GtkComboBoxText, GtkFileChooserButton, GtkColorButton, GtkFontButton, GtkLinkButton, GtkScaleButton, GtkVolumeButton, GtkAppChooserButton, GtkScale, GtkScrollbar
 
 Display
 
-GtkLabel, GtkAccelLabel, GtkImage, GtkTextView, GtkTreeView (both Lists and Trees), GtkProgressBar, GtkSpinner, GtkMenu, GtkDrawingArea, GtkInfoBar
+GtkLabel, GtkAccelLabel, GtkImage, GtkTextView, GtkTreeView (both Lists and Trees), GtkProgressBar, GtkSpinner, GtkMenu, GtkDrawingArea, GtkInfoBar, GtkCalendar, GtkLevelBar, GtkIconView
 
 Miscellaneous
 
