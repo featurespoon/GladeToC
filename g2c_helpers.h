@@ -159,6 +159,12 @@ coldata_add(GList **collist, gint col_no, gchar* value);
 gchar*
 make_column_value(g2cWidget *widget, gint pos, gchar *value);
 
+g2cWidget *
+find_top_widget(g2cWidget *widget);
+
+gboolean
+is_in_widget_list(GList *list, gchar *name);
+
 void 
 row_add(g2cWidget *widget, GList *row);
 

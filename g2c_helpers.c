@@ -723,6 +723,36 @@ g2cColumn *col = g_new0( g2cColumn, 1);
     main->columns = g_list_append(main->columns, (gpointer) col);
 }
 
+g2cWidget *
+find_top_widget(g2cWidget *widget)
+{
+g2cWidget *parent = widget->parent;
+g2cWidget *child = NULL;
+    child = widget;
+    while (parent != NULL) {
+        child = parent;
+        parent = parent->parent;        
+    }
+    return child;
+}
+
+gboolean
+is_in_widget_list(GList *list, gchar *name)
+{
+GList *run = NULL;
+g2cWidget *member = NULL;
+
+    run = g_list_first(list);
+     while (run != NULL) {
+          member = (g2cWidget *) run->data;
+          if (strcmp(member->name,name) == 0) {
+              return TRUE;
+          }
+          run = g_list_next( run ); 
+     }
+    return FALSE;
+}
+
 void
 register_add(g2cWidget *main, gchar* name, g2cWidget *widget)
 {

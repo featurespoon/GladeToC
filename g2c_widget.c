@@ -37,11 +37,13 @@ void cell_background_rgb ( g2cWidget *widget );
 void colour_chooser_rgba ( g2cWidget *widget );
 void common_tooltip_markup ( g2cWidget *widget );
 void curve_set_range_handler( g2cWidget *widget );
+void dialog_transient( g2cWidget *widget );
 void dialog_type_hint ( g2cWidget *widget );
 void entry_markup ( g2cWidget *widget );
 void entry_markup2 ( g2cWidget *widget );
 void entry_primary_pixbuf ( g2cWidget *widget );
 void entry_secondary_pixbuf ( g2cWidget *widget );
+void file_chooser_filter( g2cWidget *widget );
 void flowbox_selection_mode( g2cWidget *widget );
 void font_size_points ( g2cWidget *widget );
 void font_size_scale ( g2cWidget *widget );
@@ -652,11 +654,11 @@ static g2cSpecialHandler special_handlers[] =
     {"name", "accel_widget", NULL },
       NULL,
       NULL },
-    { "GtkAboutDialog", "transient_for",
-         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
-      { "name", "transient_for", NULL },
-         NULL,
-         NULL },
+//    { "GtkAboutDialog", "transient_for",
+//         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
+//      { "name", "transient_for", NULL },
+//         NULL,
+//         NULL },
     { "GtkAboutDialog", "authors",
       NULL,
     { NULL },
@@ -1122,11 +1124,11 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },
       
-     { "GtkColorChooserDialog", "transient_for",
-         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
-      { "name", "transient_for", NULL },
-         NULL,
-         NULL },
+//     { "GtkColorChooserDialog", "transient_for",
+//         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
+//      { "name", "transient_for", NULL },
+//         NULL,
+//         NULL },
       
       { "GtkColorChooserDialog", "rgba",
          NULL,
@@ -1189,10 +1191,10 @@ static g2cSpecialHandler special_handlers[] =
       NULL },
       
      { "GtkDialog", "transient_for",
-         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
-      { "name", "transient_for", NULL },
          NULL,
-         NULL },
+      {  NULL },
+         NULL,
+         dialog_transient },
 
     { "GtkDialog", "resizable",
       "\tgtk_window_set_resizable (GTK_WINDOW (gui->%s), %s);\n",
@@ -1309,10 +1311,10 @@ static g2cSpecialHandler special_handlers[] =
       NULL },  
         
     { "GtkFileChooserDialog", "filter",
-      "\tgtk_file_chooser_set_filter (GTK_FILE_CHOOSER (gui->%s), GTK_FILE_FILTER(gui->%s));\n",
-      { "name", "filter", NULL },
       NULL,
-      NULL },
+      {  NULL },
+      NULL,
+      file_chooser_filter },
       
     { "GtkFileChooserDialog", "create_folders",
       "\tgtk_file_chooser_set_create_folders (GTK_FILE_CHOOSER (gui->%s), %s);\n",
@@ -1380,11 +1382,11 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },
       
-    { "GtkFontChooserDialog", "transient_for",
-         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
-      { "name", "transient_for", NULL },
-         NULL,
-         NULL },
+//    { "GtkFontChooserDialog", "transient_for",
+//         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
+//      { "name", "transient_for", NULL },
+//         NULL,
+//         NULL },
       
     { "GtkFrame", "label_xalign",  
        NULL, 
@@ -1857,12 +1859,12 @@ static g2cSpecialHandler special_handlers[] =
          NULL,
          message_dialog_secondary_text },
       
-    { "GtkMessageDialog", "transient_for",
-         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
-      { "name", "transient_for", NULL },
-         NULL,
-         NULL },
-      
+//    { "GtkMessageDialog", "transient_for",
+//         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
+//      { "name", "transient_for", NULL },
+//         NULL,
+//         NULL },
+//      
     { "GtkNotebook", "enable_popup",
       "\tgtk_notebook_popup_enable (gui->%s);\n",
     { "name", NULL},
@@ -1959,11 +1961,11 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },    
       
-    { "GtkRecentChooserDialog", "transient_for",
-         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(gui->%s));\n",
-      { "name", "transient_for", NULL },
-         NULL,
-         NULL },
+//    { "GtkRecentChooserDialog", "transient_for",
+//         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(gui->%s));\n",
+//      { "name", "transient_for", NULL },
+//         NULL,
+//         NULL },
       
     { "GtkRecentChooserDialog", "limit",
          "\tgtk_recent_chooser_set_limit (GTK_RECENT_CHOOSER(gui->%s), %s);\n",
@@ -1972,10 +1974,10 @@ static g2cSpecialHandler special_handlers[] =
          NULL },
          
     { "GtkRecentChooserDialog", "filter",
-         "\tgtk_recent_chooser_set_filter (GTK_RECENT_CHOOSER(gui->%s), GTK_RECENT_FILTER(gui->%s));\n",
-      { "name", "filter", NULL },
          NULL,
-         NULL },
+      {  NULL },
+         NULL,
+         file_chooser_filter },
          
     { "GtkRecentChooserDialog", "select_multiple",
          "\tgtk_recent_chooser_set_select_multiple (GTK_RECENT_CHOOSER(gui->%s), %s);\n",
@@ -3303,6 +3305,55 @@ dialog_type_hint ( g2cWidget *widget )
   g_free( hint ); 
 }
 
+void dialog_transient( g2cWidget *widget )
+{
+gchar *transient = NULL;
+gchar *type_name = NULL;
+    g_assert( NULL != widget ); 
+    transient = g2c_widget_get_property( widget, "transient_for" ); 
+    type_name = g2c_transform_name( CURRENT_PROJECT->main_widget->name, NT_TYPENAME );
+    fprintf( CURRENT_FILE,
+            "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((%s *) owner)->gui->%s));\n",
+            widget->name, type_name, transient);
+    g_free(  type_name );
+}
+
+void file_chooser_filter( g2cWidget *widget )
+{
+gchar *filter = NULL;
+gchar *type_name = NULL;
+g2cWidget *top_widget = NULL;
+gboolean sibling = FALSE;
+    g_assert( NULL != widget ); 
+    filter = g2c_widget_get_property( widget, "filter" ); 
+    type_name = g2c_transform_name( CURRENT_PROJECT->main_widget->name, NT_TYPENAME );
+    top_widget = find_top_widget(widget);
+    sibling = is_in_widget_list(top_widget->associates, filter);
+    
+    if (strcmp(widget->klass_name,"GtkRecentChooserDialog") == 0) {
+        if (sibling == TRUE) {
+            fprintf( CURRENT_FILE,
+                    "\tgtk_recent_chooser_set_filter (GTK_RECENT_CHOOSER(gui->%s), GTK_RECENT_FILTER(gui->%s));\n",
+                    widget->name, filter);
+        } else {
+            fprintf( CURRENT_FILE,
+                    "\tgtk_recent_chooser_set_filter (GTK_RECENT_CHOOSER(gui->%s), GTK_RECENT_FILTER(((%s *) owner)->gui->%s));\n",
+                    widget->name, type_name, filter);
+        }
+    } else {  /* GtkFileChooserDialog but not GtkFileChooserButton  */
+        if (sibling == TRUE) {
+            fprintf( CURRENT_FILE,
+                    "\tgtk_file_chooser_set_filter (GTK_FILE_CHOOSER (gui->%s), GTK_FILE_FILTER(gui->%s));\n",            
+                    widget->name, filter);
+        } else {
+            fprintf( CURRENT_FILE,
+                    "\tgtk_file_chooser_set_filter (GTK_FILE_CHOOSER (gui->%s), GTK_FILE_FILTER(((%s *) owner)->gui->%s));\n",            
+                    widget->name, type_name, filter);
+        }
+    }
+    g_free(  type_name );    
+}
+
 void 
 frame_label_xalign ( g2cWidget *widget )
 {
@@ -4196,7 +4247,7 @@ create_gtk_button( g2cWidget *widget )
                 g_assert( strcmp(parent->klass_name, "GtkBox") == 0 );
                 parent = parent->parent; 
                 if (parent != NULL) {   /*  This should be a GtkDialog  */
-                    g_assert( strcmp(parent->klass_name, "GtkDialog") == 0 );
+                    g_assert( g_type_is_a(parent->klass, GTK_TYPE_DIALOG) );
                     responseid = g2c_widget_get_action_widget(parent, widget->name);
                     if (responseid == NULL)  responseid = g_strdup("0");
                     if (label == NULL) {
@@ -4622,22 +4673,9 @@ create_gtk_treeview( g2cWidget *widget )
       fprintf( CURRENT_FILE,
            "\tgui->%s = (GtkTreeView *) gtk_tree_view_new_with_model(GTK_TREE_MODEL(gui->%s));\n", 
               widget->name, model);
-  }
-  
+  }  
 }
 
-g2cWidget *
-find_top_widget(g2cWidget *widget)
-{
-g2cWidget *parent = widget->parent;
-g2cWidget *child = NULL;
-    child = widget;
-    while (parent != NULL) {
-        child = parent;
-        parent = parent->parent;        
-    }
-    return child;
-}
 
 g2cWidget *
 find_liststore(g2cWidget *widget, gchar *model)

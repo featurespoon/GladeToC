@@ -213,24 +213,9 @@ gchar *resourcename = NULL;
 #else
 	g2c_common(progname, filename, foldername);
 #endif	
-	gtk_widget_set_sensitive(GTK_WIDGET(prog->gui->regenerate_button), TRUE);
 	gtk_widget_set_sensitive(GTK_WIDGET(prog->gui->generate_button), FALSE);
 	return;
 }
-
-void
-regenerate_clicked (GtkButton* widget,
-	gpointer                  user_data)
-{
-	//TopWindow *prog = (TopWindow*) g_object_get_data (G_OBJECT (widget), "owner");
-#ifdef WIN32 
-	g2c_common(progname_s, filename_s, foldername_s, resourcename_s);
-#else
-	g2c_common(progname_s, filename_s, foldername_s);
-#endif	
-	return;
-}
-
 
 void
 dismiss_click (GtkButton* widget,

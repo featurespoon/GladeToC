@@ -11,7 +11,6 @@ typedef struct tag_FileChoose1Gui
 	GtkButtonBox         *file_buttons1;
 	GtkButton            *choose1;
 	GtkButton            *cancel;
-	GtkFileFilter        *filefilter1;
 } FileChoose1Gui;
 
 FileChoose1Gui *file_choose1_gui_create (gpointer owner);
