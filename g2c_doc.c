@@ -252,10 +252,10 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkTextBuffer") == 0) ||
           (strcmp(widget->klass_name, "GtkEntryBuffer") == 0) ||
           (strcmp(widget->klass_name, "GtkImage") == 0) ||
-          (strcmp(widget->klass_name, "GtkFileFilter") == 0) ||
           (strcmp(widget->klass_name, "GtkRecentFilter") == 0) ||
           (strcmp(widget->klass_name, "GtkEntryCompletion") == 0) ||
-          (strcmp(widget->klass_name, "GtkStack") == 0) ) {
+          (strcmp(widget->klass_name, "GtkStack") == 0) ||
+          (strcmp(widget->klass_name, "GtkFileFilter") == 0) ) {
           associates = g_list_append(associates, widget);
       }
       /*  identify the main window  */
