@@ -47,5 +47,5 @@ The resource file is only meaningful for the Windows version.  Its main purpose 
 
 Not surprisingly, the GUI version requires the input of the same information, but the program name is automatically derived from the directory name, although it can be changed.
 
-G2c produces a number of C files and headers plus a CMakeLists.txt file to drive cmake to produce a makefile to compile and link these files. The control.c file produced has skeleton handlers for all signal handlers and liststores defined in Glade. This means that the program should link and run without errors.  Naturally it is then up to the developer to fill in the handler stubs with application code.
+G2c produces a number of C files and headers plus a CMakeLists.txt file to drive cmake to produce a makefile to compile and link these files. The control.c file produced has skeleton handlers for all signal handlers and liststores defined in Glade. If liststore contents are defined in Glade then the code to populate the liststore is automatically produced. The program should link and run without errors.  Naturally it is then up to the developer to fill in the handler stubs with application code.
 
