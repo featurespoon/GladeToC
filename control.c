@@ -139,8 +139,9 @@ gchar *rawresource = NULL;
 gchar *resourcename = NULL;
 gchar *pos;
 
-	TopWindow *prog = (TopWindow*) g_object_get_data (G_OBJECT (resource_button), "owner"); 
 	g_print("%s clicked\n", "resource file chooser");
+#ifdef WIN32	
+	TopWindow *prog = (TopWindow*) g_object_get_data (G_OBJECT (resource_button), "owner"); 
 	dialog = (GtkWidget *) prog->file_choose3gui->file_choose3;
 	gtk_widget_show (dialog);
 	response = gtk_dialog_run (GTK_DIALOG(dialog));
@@ -165,6 +166,7 @@ gchar *pos;
 		}
 	}
 	gtk_widget_hide (dialog);
+#endif	
 	return;
 }	
 
@@ -195,7 +197,7 @@ gchar *resourcename = NULL;
 		return;
 	}	
         g2c_message_init((gpointer) prog->gui->textbuffer1);
-        
+#ifdef WIN32        
         resourcename = g_strdup((gchar *) gtk_entry_get_text(prog->gui->resource));
 	if ((resourcename == NULL) || (strcmp(resourcename, "") == 0)) {
 	   g_print ("resource file not supplied\n");
@@ -204,6 +206,7 @@ gchar *resourcename = NULL;
 	} else {
 	   g_print("resource name: %s\n", resourcename);
 	}
+#endif	
 	filename_s = g_strdup(filename);
 	foldername_s = g_strdup(foldername);
 	progname_s = g_strdup(progname);
@@ -227,7 +230,8 @@ dismiss_click (GtkButton* widget,
 	if (prog == NULL) {
 	  g_print("can't dismiss: owner is NULL\n");
 	} else {
-	  top_window_terminate(prog);
+	  //top_window_terminate(prog);
+	  gtk_main_quit();
 	};
 	return;
 }

@@ -35,7 +35,7 @@ FileChoose1Gui *gui = g_new0 (FileChoose1Gui, 1);
 	gtk_file_chooser_set_do_overwrite_confirmation (GTK_FILE_CHOOSER (gui->file_choose1), TRUE);
 	gtk_file_chooser_set_filter (GTK_FILE_CHOOSER (gui->file_choose1), GTK_FILE_FILTER(((TopWindow *) owner)->gui->filefilter1));
 	gtk_file_chooser_set_preview_widget_active (GTK_FILE_CHOOSER (gui->file_choose1), FALSE);
-	gtk_file_chooser_set_show_hidden (GTK_FILE_CHOOSER (gui->file_choose1), TRUE);
+	gtk_file_chooser_set_show_hidden (GTK_FILE_CHOOSER (gui->file_choose1), FALSE);
 	gtk_file_chooser_set_use_preview_label (GTK_FILE_CHOOSER (gui->file_choose1), FALSE);
 	g_object_set_data (G_OBJECT (gui->file_choose1), "owner", owner);
 

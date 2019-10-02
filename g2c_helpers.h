@@ -159,8 +159,8 @@ coldata_add(GList **collist, gint col_no, gchar* value);
 gchar*
 make_column_value(g2cWidget *widget, gint pos, gchar *value);
 
-g2cWidget *
-find_top_widget(g2cWidget *widget);
+gchar *
+icon_size_enum(gchar *size);
 
 gboolean
 is_in_widget_list(GList *list, gchar *name);

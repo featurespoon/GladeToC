@@ -723,17 +723,25 @@ g2cColumn *col = g_new0( g2cColumn, 1);
     main->columns = g_list_append(main->columns, (gpointer) col);
 }
 
-g2cWidget *
-find_top_widget(g2cWidget *widget)
-{
-g2cWidget *parent = widget->parent;
-g2cWidget *child = NULL;
-    child = widget;
-    while (parent != NULL) {
-        child = parent;
-        parent = parent->parent;        
+gchar *
+icon_size_enum(gchar *size)
+{   /*  g_free after use */
+guint isize;
+    if (g_ascii_isdigit(size[0])) {
+        isize = atoi(size);    
+        switch (isize) {
+            case 0: return g_strdup("GTK_ICON_SIZE_INVALID");
+            case 1: return g_strdup("GTK_ICON_SIZE_MENU");
+            case 2: return g_strdup("GTK_ICON_SIZE_SMALL_TOOLBAR");
+            case 3: return g_strdup("GTK_ICON_SIZE_LARGE_TOOLBAR");
+            case 4: return g_strdup("GTK_ICON_SIZE_BUTTON");
+            case 5: return g_strdup("GTK_ICON_SIZE_DND");
+            case 6: return g_strdup("GTK_ICON_SIZE_DIALOG");
+            default: return g_strdup("GTK_ICON_SIZE_INVALID");
+        }
+    } else {
+        return make_enumeral("GTK_ICON_SIZE", size);
     }
-    return child;
 }
 
 gboolean
@@ -1295,14 +1303,14 @@ g2cProp *prop;
         requires_add(main, widget->name, prop->value);
         if ((strcmp(widget->klass_name, "GtkStackSwitcher") != 0) &&
             (strcmp(widget->klass_name, "GtkStackSidebar") != 0) ) {
-            g_message("stack property found for %s\n", widget->klass_name );
+            //g_message("stack property found for %s\n", widget->klass_name );
         }
       }
       if (strcmp(prop->key,"menu_name") == 0) {      
         requires_add(main, widget->name, prop->value);
-        if (strcmp(widget->klass_name, "GtkModelButton") != 0) {
-            g_message("menu name property found for %s\n", widget->klass_name );
-        }
+//        if (strcmp(widget->klass_name, "GtkModelButton") != 0) {
+//            g_message("menu name property found for %s\n", widget->klass_name );
+//        }
       }
 //      if (strcmp(prop->key,"group") == 0) {      
 //        requires_add(main, widget->name, prop->value);
@@ -1318,28 +1326,28 @@ g2cProp *prop;
             (strcmp(widget->klass_name, "GtkSearchEntry") != 0) &&
             (strcmp(widget->klass_name, "GtkTextView") != 0) &&
             (strcmp(widget->klass_name, "GtkSpinButton") != 0) ) {
-            g_message("buffer property found for %s\n", widget->klass_name );
+            //g_message("buffer property found for %s\n", widget->klass_name );
         }
       }
       if (strcmp(prop->key,"completion") == 0) {      
         requires_add(main, widget->name, prop->value);
         if ((strcmp(widget->klass_name, "GtkEntry") != 0) &&
             (strcmp(widget->klass_name, "GtkSearchEntry") != 0) ) {
-            g_message("completion property found for %s\n", widget->klass_name );
+            //g_message("completion property found for %s\n", widget->klass_name );
         }
       }
       if (strcmp(prop->key,"model") == 0) {      
         requires_add(main, widget->name, prop->value);
         if ( (strcmp(widget->klass_name, "GtkTreeView") != 0) &&
              (strcmp(widget->klass_name, "GtkEntryCompletion") != 0) ) {
-            g_message("model name property found for %s\n", widget->klass_name );
+            //g_message("model name property found for %s\n", widget->klass_name );
         }
       }
       if (strcmp(prop->key,"accel_group") == 0) {      
         requires_add(main, widget->name, prop->value);
         if ((strcmp(widget->klass_name, "GtkMenu") != 0) &&
             (strcmp(widget->klass_name, "GtkImageMenuItem") != 0) ) {
-            g_message("accel_group property found for %s\n", widget->klass_name );
+            //g_message("accel_group property found for %s\n", widget->klass_name );
         }
       }
       if (strcmp(prop->key,"image") == 0) {      
@@ -1348,7 +1356,7 @@ g2cProp *prop;
             (strcmp(widget->klass_name, "GtkCheckbutton") != 0) &&
             (strcmp(widget->klass_name, "GtkTogglebutton") != 0) &&
             (strcmp(widget->klass_name, "GtkRadiobutton") != 0) ) {
-            g_message("image property found for %s\n", widget->klass_name );
+            //g_message("image property found for %s\n", widget->klass_name );
         }
       }
       if (strcmp(prop->key,"adjustment") == 0) {      
@@ -1356,7 +1364,7 @@ g2cProp *prop;
         if ((strcmp(widget->klass_name, "GtkScrollbar") != 0) &&
             (strcmp(widget->klass_name, "GtkSpinButton") != 0) &&
             (strcmp(widget->klass_name, "GtkScale") != 0) ) {
-            g_message("adjustment property found for %s\n", widget->klass_name );
+            //g_message("adjustment property found for %s\n", widget->klass_name );
         }
       }
       if (strcmp(prop->key,"hadjustment") == 0) {      
@@ -1365,7 +1373,7 @@ g2cProp *prop;
             (strcmp(widget->klass_name, "GtkScrolledWindow") != 0) &&
             (strcmp(widget->klass_name, "GtkToolPalette") != 0) &&
             (strcmp(widget->klass_name, "GtkTreeview") != 0) ) {
-            g_message("hadjustment property found for %s\n", widget->klass_name );
+            //g_message("hadjustment property found for %s\n", widget->klass_name );
         }
       }
       if (strcmp(prop->key,"vadjustment") == 0) {      
@@ -1374,7 +1382,7 @@ g2cProp *prop;
             (strcmp(widget->klass_name, "GtkScrolledWindow") != 0) &&
             (strcmp(widget->klass_name, "GtkToolPalette") != 0) &&
             (strcmp(widget->klass_name, "GtkTreeview") != 0) ) {
-            g_message("vadjustment property found for %s\n", widget->klass_name );
+            //g_message("vadjustment property found for %s\n", widget->klass_name );
         }
       }
       if (strcmp(prop->key,"label_widget") == 0) {      
@@ -1382,19 +1390,19 @@ g2cProp *prop;
         if ( (strcmp(widget->klass_name, "GtkToolButton") != 0) &&
              (strcmp(widget->klass_name, "GtkMenuToolButton") != 0) &&
              (strcmp(widget->klass_name, "GtkToggleToolButton") != 0) ) {
-            g_message("label_widget name property found for %s\n", widget->klass_name );
+            //g_message("label_widget name property found for %s\n", widget->klass_name );
         }
       }
       if (strcmp(prop->key,"widget") == 0) {      
         requires_add(main, widget->name, prop->value);
         if (strcmp(widget->klass_name, "GtkTreeViewColumn") != 0) {
-            g_message("widget name property found for %s\n", widget->klass_name );
+            //g_message("widget name property found for %s\n", widget->klass_name );
         }
       }
       if (strcmp(prop->key,"_submenu") == 0) {      
         requires_add(main, widget->name, prop->value);
         if (strcmp(widget->klass_name, "GtkBox") != 0) {
-            g_message("submenu name property found for %s\n", widget->klass_name );
+            //g_message("submenu name property found for %s\n", widget->klass_name );
         }
       }
       item = item->next;

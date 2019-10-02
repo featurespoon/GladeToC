@@ -73,13 +73,13 @@ TopWindowGui *gui = g_new0 (TopWindowGui, 1);
 	                    GTK_WIDGET (gui->program_box5), FALSE, FALSE, 10);
 	gtk_widget_show (GTK_WIDGET (gui->program_box5));
 	g_object_set_data (G_OBJECT (gui->program_box5), "owner", owner);
-
+#ifdef WIN32
 	gui->resource_box6 = (GtkBox*) gtk_box_new (GTK_ORIENTATION_HORIZONTAL,0);
 	gtk_box_pack_start (GTK_BOX (gui->box1), 
 	                    GTK_WIDGET (gui->resource_box6), FALSE, FALSE, 0);
 	gtk_widget_show (GTK_WIDGET (gui->resource_box6));
 	g_object_set_data (G_OBJECT (gui->resource_box6), "owner", owner);
-
+#endif
 	gui->generate_box7 = (GtkBox*) gtk_box_new (GTK_ORIENTATION_HORIZONTAL,0);
 	gtk_box_pack_start (GTK_BOX (gui->box1), 
 	                    GTK_WIDGET (gui->generate_box7), FALSE, FALSE, 0);
@@ -172,7 +172,7 @@ TopWindowGui *gui = g_new0 (TopWindowGui, 1);
 	gtk_widget_set_margin_bottom ( GTK_WIDGET (gui->label1), 20);
 	gtk_label_set_text (GTK_LABEL (gui->label1), "Program Name");
 	g_object_set_data (G_OBJECT (gui->label1), "owner", owner);
-
+#ifdef WIN32
 	gui->resource = (GtkEntry*) gtk_entry_new ();
 	gtk_box_pack_start (GTK_BOX (gui->resource_box6), 
 	                    GTK_WIDGET (gui->resource), FALSE, FALSE, 10);
@@ -193,7 +193,7 @@ TopWindowGui *gui = g_new0 (TopWindowGui, 1);
 	gtk_widget_set_halign ( GTK_WIDGET (gui->resource_button), GTK_ALIGN_END);
 	gtk_widget_set_margin_bottom ( GTK_WIDGET (gui->resource_button), 20);
 	g_object_set_data (G_OBJECT (gui->resource_button), "owner", owner);
-
+#endif
 	gui->generate_button = (GtkButton*) gtk_button_new_with_label ("Generate");
 	gtk_box_pack_start (GTK_BOX (gui->generate_box7), 
 	                    GTK_WIDGET (gui->generate_button), FALSE, FALSE, 30);
@@ -263,11 +263,11 @@ TopWindowGui *gui = g_new0 (TopWindowGui, 1);
 	g_signal_connect (G_OBJECT (gui->folder_button), "clicked",
 	                    G_CALLBACK (folder_click),
 	                    NULL);
-
+#ifdef WIN32
 	g_signal_connect (G_OBJECT (gui->resource_button), "clicked",
 	                    G_CALLBACK (resource_click),
 	                    NULL);
-
+#endif
 	g_signal_connect (G_OBJECT (gui->generate_button), "clicked",
 	                    G_CALLBACK (generate_click),
 	                    NULL);

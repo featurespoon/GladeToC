@@ -513,7 +513,6 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkHScale", "step" },
     { "GtkHScale", "page" },
     { "GtkHScale", "page_size" }, 
-//    { "GtkImage", "icon_size" },
     { "GtkImage", "image_visual" },
     { "GtkImage", "image_type" },
     { "GtkImage", "image_width" },
@@ -624,7 +623,7 @@ static g2cRemapParam remap_params[] =
     { "GtkHandleBox", "shadow_type", "shadow" },
     { "GtkLabel", "wrap", "line_wrap" },
     { "GtkRange", "policy", "update_policy" },
-    { "GtkToolPalette", "toolbar_style", "style"},
+//    { "GtkToolPalette", "toolbar_style", "style"},
     { "GtkSearchBar", "search_mode_enabled", "search_mode"},
     { "common", "margin_left", "margin_start"},
     { "common", "margin_right", "margin_end"},
@@ -1757,7 +1756,13 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       {  NULL },
       NULL,
-      attach_action },  
+      attach_action }, 
+      
+    { "GtkToolItem", "action_name",
+       NULL,
+       {  NULL },
+       NULL,
+       attach_action},    
       
     { "GtkViewport", "hadjustment",
       "\tgtk_scrollable_set_hadjustment (GTK_SCROLLABLE (gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
@@ -2145,7 +2150,19 @@ static g2cSpecialHandler special_handlers[] =
       "\tgtk_tool_button_set_icon_name(GTK_TOOL_BUTTON (gui->%s), %s);\n",
      { "name", "$icon_name", NULL },
      NULL,
-     NULL},   
+     NULL},
+      
+    { "GtkToolButton", "icon_widget",
+      "\tgtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON (gui->%s), GTK_WIDGET(gui->%s));\n",
+     { "name", "icon_widget", NULL },
+     NULL,
+     NULL},    
+      
+    { "GtkToolButton", "label_widget",
+      "\tgtk_tool_button_set_label_widget(GTK_TOOL_BUTTON (gui->%s), GTK_WIDGET(gui->%s));\n",
+     { "name", "label_widget", NULL },
+     NULL,
+     NULL},  
      
    { "GtkToolButton", "stock_id",
       "\tgtk_tool_button_set_icon_name(GTK_TOOL_BUTTON (gui->%s), %s);\n",
@@ -2158,6 +2175,12 @@ static g2cSpecialHandler special_handlers[] =
       { NULL },
        NULL,
       label_ellipsize },
+     
+    { "GtkToolItemGroup", "label_widget",
+      "\tgtk_tool_item_group_set_label_widget(GTK_TOOL_ITEM_GROUP (gui->%s), GTK_WIDGET(gui->%s));\n",
+     { "name", "label_widget", NULL },
+     NULL,
+     NULL},  
       
     { "GtkToolPalette", "icon_size",
        NULL,
@@ -2165,7 +2188,7 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
       icon_size },
       
-    { "GtkToolPalette", "style",
+    { "GtkToolPalette", "toolbar_style",
        NULL,
       { NULL },
        NULL,
@@ -2219,7 +2242,13 @@ static g2cSpecialHandler special_handlers[] =
       "\tgtk_tool_item_set_visible_vertical (GTK_TOOL_ITEM (gui->%s), %s);\n",
       { "name", "visible_vertical", NULL },
       NULL,
-      NULL },   
+      NULL }, 
+      
+    { "GtkToolbar", "toolbar_style",
+      NULL,
+      { NULL },
+      NULL,
+      toolbar_style },  
 
     { "GtkToolButton", "visible_horizontal",
       "\tgtk_tool_item_set_visible_horizontal (GTK_TOOL_ITEM (gui->%s), %s);\n",
@@ -2769,7 +2798,6 @@ gchar *size = NULL;
 gchar *size_name = NULL;
 
     g_assert( NULL != widget );
-    //if (strcmp(widget->klass_name, "GtkScaleButton") == 0 ) return; /* size included in object creation */
     size = g2c_widget_get_property( widget, "size" ); 
     if (size == NULL) {
         size_name = g_strdup("GTK_ICON_SIZE_SMALL_TOOLBAR");
@@ -3016,10 +3044,19 @@ gchar *style = NULL;
    g_assert( NULL != widget );
    
    value = g2c_widget_get_property( widget, "toolbar_style" ) ;
-   style = g_strdup_printf("%s_%s", "GTK_TOOLBAR", g_strdelimit(g_utf8_strup (value, strlen(value)),":-", '_' ) );
-   fprintf( CURRENT_FILE,
-         "\tgtk_tool_palette_set_style (GTK_TOOL_PALETTE(gui->%s), %s);\n",
-           widget->name, style);
+   //style = g_strdup_printf("%s_%s", "GTK_TOOLBAR", g_strdelimit(g_utf8_strup (value, strlen(value)),":-", '_' ) );
+   style = make_enumeral("GTK_TOOLBAR", value);
+   if (widget->klass == GTK_TYPE_TOOLBAR) {
+       fprintf( CURRENT_FILE,
+          "\tgtk_toolbar_set_style (GTK_TOOLBAR(gui->%s), %s);\n",
+            widget->name, style);
+   } else if (widget->klass == GTK_TYPE_TOOL_PALETTE){
+        fprintf( CURRENT_FILE,
+              "\tgtk_tool_palette_set_style (GTK_TOOL_PALETTE(gui->%s), %s);\n",
+                widget->name, style);
+   } else {
+       g_message("Unexpected toolbar_style for %s %s\n", widget->klass_name, widget->name);
+   }
    
 }
 
@@ -3327,7 +3364,7 @@ gboolean sibling = FALSE;
     g_assert( NULL != widget ); 
     filter = g2c_widget_get_property( widget, "filter" ); 
     type_name = g2c_transform_name( CURRENT_PROJECT->main_widget->name, NT_TYPENAME );
-    top_widget = find_top_widget(widget);
+    top_widget = g2c_widget_get_top_parent(widget);
     sibling = is_in_widget_list(top_widget->associates, filter);
     
     if (strcmp(widget->klass_name,"GtkRecentChooserDialog") == 0) {
@@ -3464,20 +3501,24 @@ gchar *caps_name = NULL;
 void 
 icon_size ( g2cWidget *widget )
 {
-gchar * str = NULL;
-gchar * icon_size = NULL;
+gchar *str = NULL;
+gchar *icon_size = NULL;
 gchar *func_name = NULL;
 gchar *caps_name = NULL;
 
     g_assert( NULL != widget );
     
     str = g2c_widget_get_property( widget, "icon_size" );
-    if (str == NULL) return;
-    
+    if (str == NULL) return;    
+    icon_size = icon_size_enum(str);    
+    func_name = g2c_transform_name(widget->klass_name,NT_FUNCTION);
+    caps_name = g_utf8_strup(func_name, strlen(func_name));
     fprintf( CURRENT_FILE,
            "\t%s_set_icon_size (%s(gui->%s), %s);\n",
            func_name, caps_name, widget->name,  icon_size);
-    g_free( icon_size );     
+    g_free( func_name );  
+    g_free( caps_name );
+    g_free( icon_size ); 
 }
 
 
@@ -4238,7 +4279,7 @@ create_gtk_button( g2cWidget *widget )
           } else {
             fprintf ( CURRENT_FILE,
                       "\tgui->%s = (GtkButton*) gtk_button_new_with_label (\"%s\");\n",
-                      widget->name, label ); 
+                      widget->name, remove_prefix(label) ); 
           }
       } else {   /*  button has parent and parent is internal and ButtonBox   */
          parent =  widget->parent->parent;  /* parent of ButtonBox: GtkBox, also internal  */
@@ -4716,7 +4757,7 @@ gboolean bTextfound = FALSE;
            "\tgui->%s = (GtkIconView *) gtk_icon_view_new_with_model(GTK_TREE_MODEL(gui->%s));\n", 
               widget->name, model);
       // navigate around to find the widget of the iconview's liststore
-      parent = find_top_widget(widget);
+      parent = g2c_widget_get_top_parent(widget);
       associate = find_liststore(parent, model);
       g_assert ( NULL != associate );
       run = g_list_first(associate->columns);
@@ -6057,12 +6098,12 @@ g2c_widget_create_closure_handler( g2cSignal * signal,
 
   fprintf( CURRENT_FILE,
            "{\n"
-           "\t/* %s *%s = (%s*) g_object_get_data (G_OBJECT (acceleratable), \"owner\"); */\n"
+           "\t/* %s *prog = (%s*) g_object_get_data (G_OBJECT (acceleratable), \"owner\"); */\n"
            "\n"         
           "\treturn TRUE;\n"
            "}\n\n",           
            window_class,  /* Window1 */
-           window->name,  /* window1 */
+           //window->name,  /* window1 */
            window_class   /* Window1 */           
          );                                   
   g_free( keystr );
