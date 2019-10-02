@@ -22,12 +22,13 @@ typedef struct tag_TopWindowGui
 	GtkButton            *resource_button;
 	GtkBox               *generate_box7;
 	GtkButton            *generate_button;
-	GtkButton            *regenerate_button;
 	GtkBox               *textview_box9;
 	GtkScrolledWindow    *scrolled1;
 	GtkTextView          *textview1;
 	GtkBox               *dismiss_box11;
 	GtkButton            *dismiss_button;
+	GtkFileFilter        *filefilter1;
+	GtkFileFilter        *filefilter2;
 	GtkTextBuffer        *textbuffer1;
 } TopWindowGui;
 
@@ -49,10 +50,6 @@ resource_click (GtkButton* resource_button,
 
 void
 generate_click (GtkButton* generate_button,
-	gpointer                  user_data);
-
-void
-regenerate_clicked (GtkButton* regenerate_button,
 	gpointer                  user_data);
 
 void

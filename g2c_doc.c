@@ -32,13 +32,13 @@ static void       parse_items( xmlNodePtr node, g2cWidget *widget );
 static void       parse_patterns( xmlNodePtr node, g2cWidget *widget );
 static void       parse_mime_types( xmlNodePtr node, g2cWidget *widget );
 static void       parse_attributes( xmlNodePtr node, g2cWidget *widget );
+static void       parse_data( xmlNodePtr node, g2cWidget *widget );
+static void       parse_rows( xmlNodePtr node, GList **rows );
 static gchar     *get_dir_prefix( g2cDoc *doc );
 
 static void       init_types( g2cDoc *doc );
 static void       output_widget_create( g2cWidget *widget,
-                                        FILE *file,
-                                        gint recurse_levels,
-                                        gboolean properties_only );
+                                        FILE *file );
 static void       output_widget_files( g2cWidget *widget, g2cDoc *doc, gboolean bWindow, g2cWidget *parent_widget );
 static void       output_widget_gui_h( g2cWidget *widget, g2cDoc *doc );
 static void       output_widget_gui_c( g2cWidget *widget, g2cDoc *doc, g2cWidget *parent_widget );
@@ -61,6 +61,7 @@ static void       output_attributes ( g2cWidget *widget, FILE* file );
 static void       output_pango_attribute( g2cWidget *widget, gchar* name, gchar* value, FILE* file );
 static void       output_menu_item( g2cWidget *widget, FILE* file );
 static void       output_menu( g2cWidget *widget, FILE* file );
+static void       output_model_enum(g2cWidget* widget, FILE  *file);
 static void       output_model_populater(g2cWidget* widget, gchar* type_name, FILE *file);
 static void       output_paned_pack_child ( g2cWidget *widget, FILE* file );
 static void       output_toolbar_widget( g2cWidget *widget, FILE *file );
@@ -251,10 +252,11 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkTextBuffer") == 0) ||
           (strcmp(widget->klass_name, "GtkEntryBuffer") == 0) ||
           (strcmp(widget->klass_name, "GtkImage") == 0) ||
-          (strcmp(widget->klass_name, "GtkFileFilter") == 0) ||
           (strcmp(widget->klass_name, "GtkRecentFilter") == 0) ||
           (strcmp(widget->klass_name, "GtkEntryCompletion") == 0) ||
-          (strcmp(widget->klass_name, "GtkStack") == 0) ) {
+          (strcmp(widget->klass_name, "GtkStack") == 0) ||
+          (strcmp(widget->klass_name, "GtkFileFilter") == 0) ||
+          (strcmp(widget->klass_name, "GtkLabel") == 0) ) {
           associates = g_list_append(associates, widget);
       }
       /*  identify the main window  */
@@ -280,21 +282,21 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkRecentChooserDialog") == 0) ||
           (strcmp(widget->klass_name, "GtkMessageDialog") == 0)  || 
           (strcmp(widget->klass_name, "GtkAppChooserDialog") == 0) ||
-          (strcmp(widget->klass_name, "GtkOffscreenWindow") == 0) ||
-          (strcmp(widget->klass_name, "GtkPopoverMenu") == 0)) {
+          (strcmp(widget->klass_name, "GtkOffscreenWindow") == 0) ) {
           widget->associates = associates;
           associates = NULL;
           widget->accel_widgets = accel_widgets;
           accel_widgets = NULL;
-          //widget->popups = popups;
-          //popups = NULL;
+          widget->popups = popups;
+          popups = NULL;
           doc->project->dialogue_widgets = g_list_append(doc->project->dialogue_widgets, widget);
       }
       if (strcmp(widget->klass_name, "GtkAccelGroup") == 0) {
           accel_widgets = g_list_append(accel_widgets, widget);
       }
       if ( (strcmp(widget->klass_name, "GtkMenu") == 0) ||
-		   (strcmp(widget->klass_name, "GtkPopover") == 0) )	  {
+           (strcmp(widget->klass_name, "GtkPopover") == 0)  ||
+           (strcmp(widget->klass_name, "GtkPopoverMenu") == 0) )	  {
           popups = g_list_append(popups, widget);
       }
       run = g_list_next(run);
@@ -309,6 +311,32 @@ g2c_doc_output( g2cDoc *doc )
               g_list_concat(doc->project->main_widget->accel_widgets, accel_widgets);
   }
   /*                 ***  End of restructuring                *** */
+    
+  /*       Sets up register of widgets for each window/dialog        */
+  
+  scan_widgets_for_register(doc->project->main_widget, doc->project->main_widget);
+
+  run = g_list_first(doc->project->dialogue_widgets);
+  while (run != NULL) {
+          widget = (g2cWidget *) run->data;
+          scan_widgets_for_register(widget, widget);
+          run = g_list_next(run);
+  }
+
+  /*                   End of  register of widgets               */ 
+ 
+  /*   now analyse the register and requires list to ensure compilation in the right order */
+  
+  analyse_requirements(doc->project->main_widget);  
+  
+  
+  run = g_list_first(doc->project->dialogue_widgets);
+  while (run != NULL) {
+          widget = (g2cWidget *) run->data;
+          analyse_requirements(widget); 
+          run = g_list_next(run);
+  }
+  /*                   End of analysis and re-ordering of widgets               */ 
   
   /* Write out the main.c file */
 #ifdef WIN32
@@ -508,6 +536,9 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
   gboolean   boverlay    = FALSE;
   gchar     *text        = NULL;
   gchar     *css_text    = NULL;
+  gchar     *comment     = NULL;
+  gchar     **parts;
+  gchar     *col_name    = NULL;
   
   /*  On entry doc->current points to an 'object' Element (or possibly 'template') */
 
@@ -648,12 +679,18 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
       {
           child_node = get_first_child(node); 
           while (child_node != NULL) {
-              if (child_node->type == XML_COMMENT_NODE) child_node = get_next_node(child_node);
+              if (child_node->type == XML_COMMENT_NODE) {
+                  comment = (gchar *) child_node->content;
+                  parts = g_strsplit(comment, " ", 0);
+                  col_name = g_strdup(parts[2]);
+                  g_strfreev( parts );
+                  child_node = get_next_node(child_node);
+              }
               g_assert( strcmp( get_node_name( child_node ), "column" ) == 0 );  
               attr = child_node->properties;
               g_assert( strcmp( get_attr_node_name( attr ), "type" ) == 0 );
               col_type = g_strdup( get_attr_node_text( attr ) );
-              widget->columns = g_list_append( widget->columns, col_type);
+              column_add(widget, col_name, col_type);              
               child_node = get_next_node(child_node);
           }
           /*  node still points to the columns element but its 'next' will be NULL and so will POP */
@@ -700,6 +737,10 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
       else if( strcmp( get_node_name( node ), "attributes" ) == 0 )
         { 
           parse_attributes( node, widget );   // process chain of attributes to the end              
+        }
+      else if( strcmp( get_node_name( node ), "data" ) == 0 )
+        { 
+          parse_data( node, widget );   // process chain of rows of liststore data to the end              
         }
       
       node = get_next_node(node);       
@@ -766,6 +807,54 @@ GList   *patterns = NULL;
      }
      widget->patterns = patterns;
   
+}
+
+static void       
+parse_rows( xmlNodePtr node, GList **rows )
+{
+xmlNodePtr child_node = NULL;
+xmlNodePtr temp_node = NULL;
+
+gchar   *data   = NULL;
+xmlAttrPtr attr = NULL;
+gchar *attr2 = NULL;
+gint colno;
+gchar *value = NULL;
+
+    child_node = get_first_child(node); 
+    while (child_node != NULL) {   
+        attr2 = (gchar *) get_node_name( child_node );
+        g_assert( strcmp( attr2, "col" ) == 0 );
+        attr = child_node->properties;
+          if (attr != NULL) {
+             temp_node = attr->children;
+             if ((temp_node != NULL) && (child_node->children != NULL)) {                     
+                  colno = atoi(temp_node->content);
+                  value = child_node->children->content;
+                  coldata_add(rows, colno, value);
+             }
+          }
+        child_node = get_next_node(child_node); 
+    }
+}
+
+static void       
+parse_data( xmlNodePtr node, g2cWidget *widget )
+{
+xmlNodePtr child_node = NULL;
+//xmlAttrPtr attr = NULL;
+gchar *attr = NULL;
+GList *row = NULL;
+
+    child_node = get_first_child(node); 
+    while (child_node != NULL) {   
+        attr = (gchar *) get_node_name( child_node );
+        g_assert( strcmp( attr, "row" ) == 0 ); 
+        row = NULL;
+        parse_rows( child_node, &row );   // process chain of cols to the end
+        row_add(widget, row);
+        child_node = get_next_node(child_node);  
+    }
 }
 
 static void       
@@ -1063,11 +1152,14 @@ parse_accel( g2cDoc *doc )
 
   attr = attr->next;
   
+  if (attr != NULL) {   
   /* Parse the name and class */
-  g_assert( strcmp( get_attr_node_name( attr ), "modifiers" ) == 0 );
-  g2c_accel_set_modifiers( accel, get_attr_node_text( attr ) );
-  g_assert( NULL != accel->modifiers );
-
+    g_assert( strcmp( get_attr_node_name( attr ), "modifiers" ) == 0 );
+    g2c_accel_set_modifiers( accel, get_attr_node_text( attr ) );
+    g_assert( NULL != accel->modifiers );
+  } else {
+    g2c_accel_set_modifiers( accel, "");  
+  }
   return accel;
 }
 
@@ -1357,6 +1449,10 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
   GList *run        = NULL;
   GList *signal_run  = NULL;
   g2cSignal *signal2 = NULL;
+  guint max_level;
+  guint level;
+  GList *register_list;
+  g2cRegister *reg;
   
 /* Get the transformed names for the widget */
   //gui_name  = g2c_transform_name( main_widget->name, NT_GUI );
@@ -1470,30 +1566,49 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
   /* Accelerators */
   fprintf( file, "\tgui->accel_group = gtk_accel_group_new ();\n" );
   fprintf( file, "\tg_object_set_data (G_OBJECT (gui->accel_group), \"owner\", owner);\n");
-  run = main_widget->accel_widgets;
-  while (run != NULL) {
-      widget = (g2cWidget *) run->data;      
-      output_widget_create( widget, file, RECURSE_ALL, FALSE );                 
-      run = run->next;
-  } 
-  fprintf( file, "\n" );
-  run = main_widget->associates;
-  while (run != NULL) {
-      widget = (g2cWidget *) run->data;      
-      output_widget_create( widget, file, RECURSE_ALL, FALSE );          
-      run = run->next;
-  } 
-  fprintf( file, "\n" );
-  run = main_widget->popups;
-  while (run != NULL) {
-      widget = (g2cWidget *) run->data;      
-      output_widget_create( widget, file, RECURSE_ALL, FALSE );                 
-      run = run->next;
-  }  
+  /* --------------------- */
+//  run = main_widget->accel_widgets;
+//  while (run != NULL) {
+//      widget = (g2cWidget *) run->data;      
+//      output_widget_create( widget, file, RECURSE_ALL, FALSE );                 
+//      run = run->next;
+//  } 
+//  fprintf( file, "\n" );
+//  run = main_widget->associates;
+//  while (run != NULL) {
+//      widget = (g2cWidget *) run->data;      
+//      output_widget_create( widget, file, RECURSE_ALL, FALSE );          
+//      run = run->next;
+//  } 
+//  fprintf( file, "\n" );
+//  run = main_widget->popups;
+//  while (run != NULL) {
+//      widget = (g2cWidget *) run->data;      
+//      output_widget_create( widget, file, RECURSE_ALL, FALSE );                 
+//      run = run->next;
+//  }  
     /* WIDGET CREATION CODE */
+  max_level = get_max_register_level(main_widget);
+  
   fprintf( file, "\n\t/* Widget construction */\n" );
   
-  output_widget_create( main_widget, file, RECURSE_ALL, FALSE );          
+  for (level = 0; level <= max_level; level++) {
+      
+    fprintf( file, "\t/* Widgets at level %d */\n", level );
+    
+    register_list = g_list_first( main_widget->regster );
+    while ( NULL != register_list ) {
+        reg = (g2cRegister *) register_list->data;
+        if (reg->level == level) {   
+            
+            output_widget_create( reg->widget, file );  
+            
+        }
+        register_list = g_list_next( register_list );  
+    } 
+  }
+  
+  /* ---------------------------------------- */
   
   if (doc->project->main_widget == main_widget) {
       fprintf( file,
@@ -1968,12 +2083,12 @@ output_widget_c( g2cWidget *main_widget, g2cDoc *doc )
   
   initialise_name = g_strdup_printf("initialise_%s", main_widget->name);
   init_exists = FALSE;
-  if ( NULL != CURRENT_SOURCE_PARSER ) {
-        if ( g2c_file_parser_item_exists( CURRENT_SOURCE_PARSER, initialise_name ) ) {
-            //g_print("  initialiser '%s' already exists. Not included in generated file.\n", initialise_name);
-            init_exists = TRUE;
-        }
-  }
+//  if ( NULL != CURRENT_SOURCE_PARSER ) {
+//        if ( g2c_file_parser_item_exists( CURRENT_SOURCE_PARSER, initialise_name ) ) {
+//            //g_print("  initialiser '%s' already exists. Not included in generated file.\n", initialise_name);
+//            init_exists = TRUE;
+//        }
+//  }
   g_free( initialise_name );
   if (init_exists == FALSE) {
     fprintf( file, "void initialise_%s (%sGui *%s)\n",
@@ -2037,6 +2152,7 @@ output_widget_c( g2cWidget *main_widget, g2cDoc *doc )
       run = g_list_next(run);
   } 
   
+  fprintf( file, "\t/*    Accelerator handlers   */\n" );
   clear_signal_list ();
   run = main_widget->accel_widgets;
   while (run != NULL) {
@@ -2083,25 +2199,94 @@ output_widget_c( g2cWidget *main_widget, g2cDoc *doc )
 }   /* end output_widget_c  */
 
 static void
+output_model_enum(g2cWidget* widget, FILE  *file)
+{
+GList *coltype = NULL;    
+g2cColumn *column;
+gboolean firstcol;
+
+    fprintf( file,"enum\n");
+    fprintf( file,"{\n");
+    firstcol = TRUE;
+    coltype = g_list_first(widget->columns);
+    while (coltype != NULL) {
+        column = (g2cColumn *) coltype->data;
+        if (firstcol == TRUE) {
+          fprintf( file,"\tCOL_%s = 0,\n", g_ascii_strup(column->col_name, -1) );
+          firstcol = FALSE;
+        } else {
+          fprintf( file,"\tCOL_%s,\n", g_ascii_strup(column->col_name, -1) );  
+        }              
+        coltype = g_list_next(coltype);
+    }
+    fprintf( file, "\tNUMCOLS_%s\n", g_ascii_strup(widget->name, -1) );
+    fprintf( file,"};\n");
+}
+
+static void
 output_model_populater(g2cWidget* widget, gchar* type_name, FILE  *file)
 {
 gchar *populater = NULL;
+GList *row  = NULL;
+GList *cols = NULL;
+GList *col  = NULL;
+g2cColdata *coldata;
+gchar *column_value = NULL;
+gint pixbufcol = -1;
+gchar *pixbuffile = NULL;
+gboolean pixbuffirst = TRUE;
+
     populater = g_strdup_printf("populate_%s", widget->name);
     if ((strcmp(widget->klass_name, "GtkListStore") == 0) ||
         (strcmp(widget->klass_name, "GtkTreeStore") == 0))   {
         if ( NULL != CURRENT_SOURCE_PARSER )
-            {
+        {
               if ( g2c_file_parser_item_exists( CURRENT_SOURCE_PARSER, populater ) ) {                  
                   g_free( populater );
                   return;
               } else {
                   g_print("  Populater '%s' is new. Included in generated file.\n", populater);
               }
-            }
+        }
+          output_model_enum(widget, file);
+          fprintf( file,"\n\n");
           fprintf( file, "void populate_%s(%sGui *gui,\n\t\t GtkTreeModel*\t liststore)\n",                  
                   widget->name,
                   type_name);
-          fprintf( file, "{\n\n");
+          fprintf( file, "{\n");
+          if (widget->table == NULL) fprintf (file, "/*\n");
+          fprintf( file, "GtkTreeIter    iter;\n");
+          fprintf( file, "GtkListStore  *store = (GtkListStore *) liststore;\n\n");         
+          if (widget->table == NULL) fprintf (file, "*/\n");
+         
+          row = g_list_first(widget->table);
+          while (row != NULL) {
+              fprintf( file, "\tgtk_list_store_append (store, &iter);\n");
+              fprintf( file, "\tgtk_list_store_set (store, &iter,\n");             
+              cols = (GList *) row->data;
+              col = g_list_first(cols);
+              while (col != NULL) {
+                  coldata = (g2cColdata *) col->data;
+                  column_value = make_column_value(widget, coldata->col_no, coldata->col_value);
+                  if (strcmp(column_value,"pixbuf") != 0) {
+                    fprintf( file, "\t\t%d,%s,\n", coldata->col_no, column_value); 
+                  } else {
+                      pixbufcol = coldata->col_no;
+                      pixbuffile = coldata->col_value;
+                  }
+                  col = g_list_next(col);
+              }
+              fprintf( file, "\t\t-1);\n\n");
+              if (pixbufcol >= 0) {
+                  if (pixbuffirst == TRUE) {
+                    fprintf( file, "GdkPixbuf *pixbuf1;\nGError *pixbuf1_error = NULL;\n");
+                    pixbuffirst = FALSE;
+                  }
+                  fprintf( file, "\tpixbuf1 = gdk_pixbuf_new_from_file(\"%s\", &pixbuf1_error);\n", pixbuffile);
+                  fprintf( file, "\tgtk_list_store_set (store, &iter, %d, pixbuf1, -1);\n\n", pixbufcol);                  
+              }
+              row = g_list_next(row);
+          }          
           fprintf( file, "\treturn;\n");
           fprintf( file, "}\n\n");
     }  
@@ -2110,16 +2295,17 @@ gchar *populater = NULL;
 
 static void
 output_widget_create( g2cWidget *widget,
-                      FILE *file,
-                      gint recurse_levels,
-                      gboolean properties_only )
+                      FILE *file )
 /*   Output the create string for the widget.  */
+/*      plus connections to containers         */
+/*      plus properties                        */
 {
   gchar     *func_name        = NULL;
   gboolean   pack_create      = TRUE;
   gchar     *create_string    = NULL;
   GList     *children         = NULL;
   gchar     *pack_type        = NULL;
+  gboolean  properties_only = FALSE;
   
   g2cProplist *proplist = NULL;
   gboolean    propmore = TRUE;
@@ -2151,23 +2337,32 @@ output_widget_create( g2cWidget *widget,
            widget->name );
 #endif
 
-  if( !properties_only )
-    {
-        {
-          /* Gtk widget */
-          if( g_type_is_a( widget->klass, GTK_TYPE_MENU_ITEM ) &&
-              ( NULL == g2c_widget_get_property( widget, "label" ) ) )
-            {              
-                
-              /* Just create the item */
-              fprintf( file,
-                       "\tgui->%s = (%s*) gtk_menu_item_new ();\n",
-                       widget->name, widget->klass_name );
-                
-            }          
-          else
+  
+        
+//          /* Gtk Menu Item */
+//          if( g_type_is_a( widget->klass, GTK_TYPE_MENU_ITEM ) &&
+//              ( NULL == g2c_widget_get_property( widget, "label" ) ) )
+//            {              
+//                
+//              /* Just create the item */
+//              fprintf( file,
+//                       "\tgui->%s = (%s*) gtk_menu_item_new ();\n",
+//                       widget->name, widget->klass_name );
+//                
+//            }          
+//          else
+//            {
+            /*              The standard create string is simply:                 */
+            /*                 gui->widget_name = widget_type_new();              */
+            /*  or one of the variations given in create_functions in g2c_widget.c */
+  
+            if (strcmp(widget->klass_name, "AtkObject") == 0)
             {
-              /* gui->widget_name = widget_type_new(); */
+                properties_only = TRUE;
+            }
+      if (!properties_only) {
+          
+            
               create_string = g2c_widget_create_string( widget );
 
               if( NULL != create_string )
@@ -2175,7 +2370,7 @@ output_widget_create( g2cWidget *widget,
                   fprintf( file, (char *)  create_string, NULL );
                   g_free( create_string );
                 }              
-            }
+//            }
 
           if( NULL != widget->parent )
             {
@@ -2186,7 +2381,7 @@ output_widget_create( g2cWidget *widget,
                 }
               else if( g_type_is_a( widget->klass, GTK_TYPE_MENU_ITEM ) )
                 {
-                  /* Handle a menu item */
+                  /* Handle the connection of a menu item to its parent */
                   output_menu_item( widget, file );
 
                 }
@@ -2282,6 +2477,14 @@ output_widget_create( g2cWidget *widget,
                            widget->parent->name,
                            widget->name);
                   }
+              }
+              else if (( strcmp( widget->parent->klass_name, "GtkFlowBoxChild" ) == 0 ) && 
+                       ( widget->parent->parent != NULL) &&  
+                       ( strcmp( widget->parent->parent->klass_name, "GtkFlowBox" ) == 0 ) ) {
+                     fprintf( file,
+                        "\tgtk_flow_box_insert(GTK_FLOW_BOX(gui->%s), GTK_WIDGET(gui->%s), -1);\n",
+                        widget->parent->parent->name,
+                        widget->name);
               }
               /* Pack the widget, if necessary */
              else if( !widget->klass || !widget->parent->klass ) {
@@ -2466,8 +2669,8 @@ output_widget_create( g2cWidget *widget,
                       }                           
             }
             
-        }
-    }
+      }    
+    
 
   /* Write out the properties */
 
@@ -2514,9 +2717,9 @@ output_widget_create( g2cWidget *widget,
       output_attributes ( widget, file );
   }
   
-  if( !properties_only )
+  
     /* This provides a way to get the owning class from this widget */
-    {
+    
       if (widget->internal == FALSE) {
          fprintf( file,
                "\tg_object_set_data (G_OBJECT (gui->%s), \"owner\", owner);\n\n",
@@ -2524,19 +2727,19 @@ output_widget_create( g2cWidget *widget,
       }
      
       /* Recursively handle the children of this widget */
-      children = g_list_first( widget->children );
+//      children = g_list_first( widget->children );
+//
+//      while( ( NULL != children ) && ( recurse_levels > 0 ) )
+//        {
+//          /* Call this function recursively. */
+//          output_widget_create( children->data, file );
+//
+//          children = g_list_next( children );
+//        }
 
-      while( ( NULL != children ) && ( recurse_levels > 0 ) )
-        {
-          /* Call this function recursively. */
-          output_widget_create( children->data, file, recurse_levels, properties_only );
-
-          children = g_list_next( children );
-        }
-
-      recurse_levels--;
+//      recurse_levels--;
       
-    }
+    
 
   if( NULL != func_name ) g_free( func_name );
 }
@@ -2937,7 +3140,7 @@ GString *blue = NULL;
                  "\t\tpango_attr_strikethrough_new( TRUE ));\n"
                  );
     } else return;
-           
+
 }
 
 static void
