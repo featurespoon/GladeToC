@@ -1,2 +1,0 @@
-# Hashes of file build rules.
-dca2cf5b0cbe8eba28d90d4949e7c9e6 g2c.rc.obj

@@ -1,6 +1,0 @@
-/d/Gtk3/github/g2c-3/CMakeFiles/rebuild_cache.dir
-/d/Gtk3/github/g2c-3/CMakeFiles/g2cGui.dir
-/d/Gtk3/github/g2c-3/CMakeFiles/edit_cache.dir
-/d/Gtk3/github/g2c-3/CMakeFiles/lib2.dir
-/d/Gtk3/github/g2c-3/CMakeFiles/lib1.dir
-/d/Gtk3/github/g2c-3/CMakeFiles/g2c.dir
