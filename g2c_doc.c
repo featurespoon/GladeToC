@@ -24,7 +24,7 @@
 static void       output_main_file( g2cDoc *doc, gchar *file_name );
 static void       parse_project_properties( g2cDoc *doc );
 static void       parse_top_level_widgets( g2cDoc *doc );
-static g2cWidget *parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverlay );
+static g2cWidget *parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverlay, g2cPackDirection child_pack );
 static g2cSignal *parse_signal( g2cDoc *doc );
 static g2cAccel  *parse_accel( g2cDoc *doc );
 static void       parse_packing( g2cDoc *doc, g2cWidget *widget );
@@ -505,7 +505,7 @@ parse_top_level_widgets( g2cDoc *doc )
   /* doc->current should be set to the first widget */
   while( NULL != top )
     {
-      widget = parse_widget( doc, NULL, FALSE, FALSE );
+      widget = parse_widget( doc, NULL, FALSE, FALSE, 0 );
       
       if (widget != NULL) 
          g2c_project_add_top_level_widget( doc->project, widget );
@@ -517,7 +517,7 @@ parse_top_level_widgets( g2cDoc *doc )
 
 /*    This function recurses down a tree structure of widgets    */
 static g2cWidget *
-parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverlay )
+parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverlay, g2cPackDirection child_pack )
 {
   xmlNodePtr node        = NULL;
   gchar     *class_name  = NULL;
@@ -539,6 +539,7 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
   gchar     *comment     = NULL;
   gchar     **parts;
   gchar     *col_name    = NULL;
+  g2cPackDirection pack_type  = 0;
   
   /*  On entry doc->current points to an 'object' Element (or possibly 'template') */
 
@@ -568,6 +569,10 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
     g_message( "*** No class found in gtk for %s\n", widget->klass_name );
   
   widget->internal = internal;
+  if  (child_pack != 0)  {
+      widget->packing_type = LABEL_PACKING;
+      widget->packing.box.pack_type = child_pack;
+  }
   widget->parent = parent;
   
   if (poverlay == TRUE)
@@ -610,6 +615,14 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
                   if (strcmp(get_attr_node_text( attr ), "overlay") == 0) {
                       boverlay = TRUE;
                   }
+                  if (strcmp(get_attr_node_text( attr ), "action-start") == 0) {                      
+                      pack_type = PACK_START;
+                      //binternal = TRUE;
+                  }
+                  if (strcmp(get_attr_node_text( attr ), "action-end") == 0) {
+                      pack_type = PACK_END;
+                      //binternal = TRUE;
+                  }
               }
               g_free( child_attr );
           }
@@ -619,7 +632,7 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
           
           if (strcasecmp(doc->current->name,"object") == 0) {             
           
-              subwidget = parse_widget( doc, widget, binternal, boverlay );  // so PUSH widgets 
+              subwidget = parse_widget( doc, widget, binternal, boverlay, pack_type );  // so PUSH widgets 
               if (subwidget == NULL) {
                   return NULL;
               }
@@ -1007,8 +1020,7 @@ gchar *menu = NULL;
          doc->current = get_next_node(doc->current);  
       }
     }
-  else if ( (g_type_is_a( widget->klass, GTK_TYPE_LABEL )) &&
-            (g_type_is_a( widget->parent->klass, GTK_TYPE_NOTEBOOK ) ) )
+  else if (g_type_is_a( widget->parent->klass, GTK_TYPE_NOTEBOOK ) )   /*  (g_type_is_a( widget->klass, GTK_TYPE_LABEL )) &&  */
     {
       while (doc->current != NULL) { 
        if ( strcmp( get_node_name( doc->current ), "property" ) == 0 ) {
@@ -2452,16 +2464,22 @@ output_widget_create( g2cWidget *widget,
                               widget->name);
                       }
               }
-              else if( (strcmp( widget->parent->klass_name, "GtkAlignment") == 0 )  &&
-                       (widget->parent->parent != NULL) &&                      
-                       (g_type_is_a( widget->parent->parent->klass, GTK_TYPE_FRAME ) ) )
-                      {
+              else if( g_type_is_a( widget->parent->klass, GTK_TYPE_FRAME ) ) {
+                  if ( strcmp( widget->klass_name, "GtkLabel" ) == 0  ) {
+                      fprintf( file,
+                                   "\tgtk_frame_set_label_widget(GTK_FRAME(gui->%s),\n"
+                                   "\t                           GTK_WIDGET(gui->%s));\n",
+                                    widget->parent->name,
+                                    widget->name);
+                              
+                  } else {
                            fprintf( file,
                                        "\tgtk_container_add (GTK_CONTAINER (gui->%s),\n"
                                        "\t                   GTK_WIDGET (gui->%s));\n",
-                                       widget->parent->parent->name,
+                                       widget->parent->name,
                                        widget->name);
-                      }
+                  }
+              }
               else if ( strcmp( widget->parent->klass_name, "GtkOverlay" ) == 0 )  {
                   value = g2c_widget_get_property( widget, "_overlay" );
                   if (value == NULL) {
@@ -2561,18 +2579,42 @@ output_widget_create( g2cWidget *widget,
                       /* Labels are added in this statement, so don't add them again */
                       if( !g_type_is_a( widget->klass, GTK_TYPE_LABEL ) )  /* i.e. widget has to be a box */
                         {
-                          fprintf( file,
-                                   "\tgtk_notebook_append_page (GTK_NOTEBOOK (gui->%s),\n"
-                                   "\t                          GTK_WIDGET (gui->%s),\n"
-                                   "\t                          GTK_WIDGET (gui->%s));\n",
-                                   widget->parent->name,   /* notebook */
-                                   widget->name,           /*  box  */
-                                   g2c_widget_get_property( widget, "_tab_label" ) );   /*  label  */
+                          value =  g2c_widget_get_property( widget, "_tab_label" );
+                          if (value != NULL) {
+                            fprintf( file,
+                                     "\tgtk_notebook_append_page (GTK_NOTEBOOK (gui->%s),\n"
+                                     "\t                          GTK_WIDGET (gui->%s),\n"
+                                     "\t                          GTK_WIDGET (gui->%s));\n",
+                                     widget->parent->name,   /* notebook */
+                                     widget->name,           /*  box  */
+                                     g2c_widget_get_property( widget, "_tab_label" ) );   /*  label  */                            
+                              
+                            label_widget = g2c_widget_find_by_name (widget->parent,value );
                           
-                          label_widget = g2c_widget_find_by_name (widget->parent, g2c_widget_get_property( widget, "_tab_label" ) );
-                          
-                          notebook_packing ( label_widget, widget );
+                            notebook_packing ( label_widget, widget );
+                            
+                          }
                         }
+                      // action widgets of GtkNotebook
+                      if ( (widget->packing_type == LABEL_PACKING) && (widget->packing.box.pack_type != 0) ) {
+                          if (widget->packing.box.pack_type == PACK_START) {
+                             value = g_strdup("GTK_PACK_START");
+                          } else if (widget->packing.box.pack_type == PACK_END) {
+                             value = g_strdup("GTK_PACK_END"); 
+                          } else {
+                              g_message("Notebook action widget fails\n");
+                          }
+                          fprintf( file,
+                                   "\tgtk_notebook_set_action_widget (GTK_NOTEBOOK (gui->%s),\n"
+                                   "\t                                GTK_WIDGET (gui->%s),\n"
+                                    "\t                                %s);\n",
+                                     widget->parent->name,   /* notebook */
+                                     widget->name,           /*  action widget  */
+                                     value);                 /* start or end  */
+                           g_free( value ); 
+                           
+                           notebook_packing ( widget, NULL );
+                      }
                     }
                   else if( g_type_is_a( widget->parent->klass, GTK_TYPE_STACK ) )
                     {
@@ -2581,14 +2623,14 @@ output_widget_create( g2cWidget *widget,
                           push_to_stack( widget, file );                      
                         }
                     }
-                  else if( g_type_is_a( widget->parent->klass, GTK_TYPE_ASPECT_FRAME ) )
-                    {
-                       fprintf( file,
-                                   "\tgtk_container_add (GTK_CONTAINER (gui->%s),\n"
-                                   "\t                   GTK_WIDGET (gui->%s));\n",
-                                   widget->parent->name,
-                                   widget->name);
-                    }
+//                  else if( g_type_is_a( widget->parent->klass, GTK_TYPE_ASPECT_FRAME ) )
+//                    {
+//                       fprintf( file,
+//                                   "\tgtk_container_add (GTK_CONTAINER (gui->%s),\n"
+//                                   "\t                   GTK_WIDGET (gui->%s));\n",
+//                                   widget->parent->name,
+//                                   widget->name);
+//                    }
                   else if( g_type_is_a( widget->parent->klass, GTK_TYPE_ASSISTANT ) )
                   {
                      if ( ( g_type_is_a( widget->klass, GTK_TYPE_LABEL ) ) ||

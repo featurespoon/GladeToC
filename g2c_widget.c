@@ -3188,7 +3188,8 @@ gchar *formstr = NULL;
                 widget->name,
                 g2c_get_bool_b(widget->packing.tab.detachable) );  
   
-  if (widget->packing.tab.menu_label != NULL) {      
+  if ( (box_widget != NULL) && 
+       (widget->packing.tab.menu_label != NULL) ) {      
      fprintf( CURRENT_FILE,
              "\tgtk_notebook_set_menu_label_text (gui->%s,"
              "GTK_WIDGET (gui->%s),"
