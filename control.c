@@ -19,7 +19,6 @@ void listfile(GtkTextBuffer* textbuffer, gchar *file);
 
 void initialise_top_window (TopWindowGui *top_window)
 {
-    //g_print("%s called\n", "Initialise");
     return;
 }
 
@@ -46,12 +45,10 @@ GtkWidget *dialog;
 gchar *filename = NULL;
 
 	TopWindow *prog = (TopWindow*) g_object_get_data (G_OBJECT (widget), "owner"); 
-	//g_print("%s clicked\n", "glade file chooser");
 	dialog = (GtkWidget *) prog->file_choose1gui->file_choose1;
 	gtk_widget_show (dialog);
 	response = gtk_dialog_run (GTK_DIALOG(dialog));
 	
-	//g_print("response is %d  \n", response);
 	if (response ==  5) {   // GTK_RESPONSE_ACCEPT but response 5 set in Glade
 		
 		GtkFileChooser *chooser = GTK_FILE_CHOOSER (dialog);
@@ -60,9 +57,7 @@ gchar *filename = NULL;
 		if (filename == NULL) {
 			g_print("No file selected\n");
 		} else {
-			//g_print("file name: %s\n", filename);
 			gtk_entry_set_text(prog->gui->glade_file, filename);
-			//g_free (filename);
 		}
 	}
 	gtk_widget_hide (dialog);
@@ -83,24 +78,20 @@ gchar disc[6];
 gchar *progname = NULL;
 
 	TopWindow *prog = (TopWindow*) g_object_get_data (G_OBJECT (widget), "owner"); 
-	//g_print("%s clicked.  filename: %s\n", "folder chooser", filename);
 	dialog = (GtkWidget *) prog->file_choose2gui->file_choose2;
 	gtk_widget_show (dialog);
 	response = gtk_dialog_run (GTK_DIALOG(dialog));
 	
-	//g_print("response is %d  \n", response);
 	if (response ==  5) {   
 		
 		GtkFileChooser *chooser = GTK_FILE_CHOOSER (dialog);
 		uri = gtk_file_chooser_get_uri (chooser);
 		uri = g_strdelimit(uri, "\\", '/');
-		g_print("uri foldername: %s\n", uri);
 #ifdef WIN32
 		filepos = g_strrstr(uri, ":/");
 		if (filepos != NULL) {
 			disc[0] = (filepos-1)[0];
 			disc[1] = 0;
-			//foldername = g_strdup_printf("%s:/%s", g_ascii_strdown(disc, 1), filepos+2);
 			foldername = g_strdup_printf("%s:/%s", disc, filepos+2);		
 		}
 #else
@@ -109,13 +100,11 @@ gchar *progname = NULL;
 			foldername = g_strdup(filepos+1);	
 		} 
 #endif		 
-		g_print("foldername: %s\n", foldername);
 		if (foldername == NULL) {
 			g_print("No folder selected\n");
 		} else {
 			gtk_entry_set_text(prog->gui->folder, foldername);
 			progname = (gchar *) gtk_entry_get_text(prog->gui->program);
-			//g_print("in folder  progname: %s\n", progname);
 			if ((progname == NULL) || (strcmp(progname,"") == 0)) {
 				filepos = g_strrstr(foldername, "/");
 				if (filepos != 0) {  /*  set default program name from folder name  */
@@ -161,7 +150,6 @@ gchar *pos;
 		if (resourcename == NULL) {
 			g_print("No file selected\n");
 		} else {
-			//g_print("resource name: %s\n", resourcename);
 			gtk_entry_set_text(prog->gui->resource, resourcename);			
 		}
 	}
@@ -226,7 +214,6 @@ dismiss_click (GtkButton* widget,
 
 {
 	TopWindow *prog = (TopWindow*) g_object_get_data (G_OBJECT (widget), "owner"); 
-	//g_print("%s clicked\n", "dismiss");
 	if (prog == NULL) {
 	  g_print("can't dismiss: owner is NULL\n");
 	} else {

@@ -149,10 +149,6 @@ static g2cCreateFunction create_functions[] =
       { NULL },
         NULL},
 
-    { "GtkArrow", "gtk_arrow_new (%s, %s)",
-      { "arrow_type", "shadow_type", NULL },
-      NULL },
-
     { "GtkAlignment", NULL,
       { NULL },
       create_gtk_alignment },
@@ -449,8 +445,7 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkAspectFrame", "ratio" },
     { "GtkAspectFrame", "obey_child" },
     { "GtkWidget", "_tab_label" },
-    { "GtkArrow", "arrow_type" },
-    { "GtkArrow", "shadow_type" },
+    { "GtkArrow", "arrow_type" },  /*  GtkArrow deprecated  */
     { "GtkBox", "can_focus"},   /* because this is a common widget property */
     { "GtkBox", "orientation" },
     { "GtkBox", "spacing" },
@@ -546,6 +541,8 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkMessageDialog", "text" },
     { "GtkNotebook", "label" },
     { "GtkPixmap", "filename" },
+    { "GtkPlacesSidebar", "show_connect_to_server" },   /* deprecated */
+    { "GtkPlacesSidebar", "window_placement_set" },
     { "GtkPopover", "relative_to" },
     { "GtkPreview", "type" },
     { "GtkProgessBar", "lower" },
@@ -612,7 +609,6 @@ static g2cIgnoreParam ignore_params[] =
 /* Some parameters common to all classes have had their names changed */
 static g2cRemapParam remap_params[] =
   {
-    { "GtkArrow", "shadow_type", "shadow_type" },
     { "GtkWindow", "window_position", "position" }, 
     { "GtkDialog", "window_position", "position" }, 
     { "GtkFontChooserDialog", "window_position", "position" },
@@ -1892,7 +1888,25 @@ static g2cSpecialHandler special_handlers[] =
       "\tg_object_set(G_OBJECT(gui->%s),\"position_set\", %s, NULL);\n",
       { "name", "position_set", NULL, NULL, NULL },
       NULL,
-      NULL },  
+      NULL },
+      
+    { "GtkPlacesSidebar", "open_flags",
+      "\tgtk_places_sidebar_set_open_flags(GTK_PLACES_SIDEBAR(gui->%s), %s);\n",
+      { "name", "open_flags", NULL },
+      NULL,
+      NULL },    
+      
+    { "GtkPlacesSidebar", "shadow_type",
+      NULL,
+      { NULL },
+      NULL,
+      shadow_type }, 
+      
+    { "GtkPlacesSidebar", "show_starred_location",
+      "\tg_object_set(G_OBJECT(gui->%s), \"show-starred-location\", %s, NULL);\n",
+      { "name", "show_starred_location", NULL },
+      NULL,
+      NULL },        
 
     { "GtkProgressBar", "text",
       "\tgtk_progress_bar_set_text (GTK_PROGRESS_BAR (gui->%s), %s);\n",
@@ -2030,7 +2044,55 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       { NULL },
       NULL,
-      volume_button_size },     
+      volume_button_size }, 
+      
+    { "GtkScrolledWindow", "kinetic_scrolling",
+      "\tgtk_scrolled_window_set_kinetic_scrolling(GTK_SCROLLED_WINDOW(gui->%s), %s);\n",
+      { "name", "kinetic_scrolling", NULL },
+       NULL,
+       NULL },     
+      
+    { "GtkScrolledWindow", "min_content_width",
+      "\tgtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(gui->%s), %s);\n",
+      { "name", "min_content_width", NULL },
+       NULL,
+       NULL },
+      
+    { "GtkScrolledWindow", "min_content_height",
+      "\tgtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(gui->%s), %s);\n",
+      { "name", "min_content_height", NULL },
+       NULL,
+       NULL },
+       
+    { "GtkScrolledWindow", "max_content_width",
+      "\tgtk_scrolled_window_set_max_content_width(GTK_SCROLLED_WINDOW(gui->%s), %s);\n",
+      { "name", "max_content_width", NULL },
+       NULL,
+       NULL },
+      
+    { "GtkScrolledWindow", "max_content_height",
+      "\tgtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(gui->%s), %s);\n",
+      { "name", "max_content_height", NULL },
+       NULL,
+       NULL }, 
+       
+     { "GtkScrolledWindow", "overlay_scrolling",
+      "\tgtk_scrolled_window_set_overlay_scrolling(GTK_SCROLLED_WINDOW(gui->%s), %s);\n",
+      { "name", "overlay_scrolling", NULL },
+       NULL,
+       NULL },   
+    
+     { "GtkScrolledWindow", "propagate_natural_height",
+      "\tgtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(gui->%s), %s);\n",
+      { "name", "propagate_natural_height", NULL },
+       NULL,
+       NULL },   
+       
+    { "GtkScrolledWindow", "propagate_natural_width",
+      "\tgtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(gui->%s), %s);\n",
+      { "name", "propagate_natural_width", NULL },
+       NULL,
+       NULL },   
       
     { "GtkScrolledWindow", "shadow_type",
       NULL,
@@ -3596,6 +3658,8 @@ gchar * caps_name = NULL;
     mode = make_enumeral ("GTK_SHADOW", str ); 
     if (strcmp(widget->klass_name, "GtkAspectFrame") == 0) {
         klass = g_strdup("GtkFrame");
+    } else if (strcmp(widget->klass_name, "GtkPlacesSidebar") == 0) {
+        klass = g_strdup("GtkScrolledWindow");
     } else {
         klass = g_strdup(widget->klass_name);
     }
@@ -5311,6 +5375,7 @@ g2c_widget_new( gchar *class_name )
       if ( strcmp( widget->klass_name, "GtkBox" ) == 0 ) {  widget->klass = GTK_TYPE_BOX; 
       } else if (strcmp( widget->klass_name, "GtkDialog" ) == 0) {  widget->klass = GTK_TYPE_DIALOG;
       } else if (strcmp( widget->klass_name, "GtkButton" ) == 0) {  widget->klass = GTK_TYPE_BUTTON;
+      } else if (strcmp( widget->klass_name, "GtkAssistant" ) == 0) {  widget->klass = GTK_TYPE_ASSISTANT;
       } else if (strcmp( widget->klass_name, "GtkMenuButton" ) == 0) {  widget->klass = GTK_TYPE_MENU_BUTTON;
       } else if (strcmp( widget->klass_name, "GtkCheckButton" ) == 0) { widget->klass = GTK_TYPE_CHECK_BUTTON;
       } else if (strcmp( widget->klass_name, "GtkToggleButton" ) == 0) { widget->klass = GTK_TYPE_TOGGLE_BUTTON;
@@ -5459,6 +5524,7 @@ g2c_widget_new( gchar *class_name )
       else if ( strcmp( widget->klass_name, "GtkStack" ) == 0 ) widget->klass = GTK_TYPE_STACK;
       else if ( strcmp( widget->klass_name, "GtkStackSwitcher" ) == 0 ) widget->klass = GTK_TYPE_STACK_SWITCHER;
       else if ( strcmp( widget->klass_name, "GtkStackSidebar" ) == 0 ) widget->klass = GTK_TYPE_STACK_SIDEBAR;
+      else if ( strcmp( widget->klass_name, "GtkPlacesSidebar" ) == 0 ) widget->klass = GTK_TYPE_PLACES_SIDEBAR;
       else if ( strcmp( widget->klass_name, "GtkHeaderBar" ) == 0)   widget->klass = GTK_TYPE_HEADER_BAR;
       else if ( strcmp( widget->klass_name, "GtkScrollbar" ) == 0)   widget->klass = GTK_TYPE_SCROLLBAR;
       else if ( strcmp( widget->klass_name, "GtkScale" ) == 0)   widget->klass = GTK_TYPE_SCALE;
@@ -6189,6 +6255,7 @@ g2c_widget_create_signal_handler_cb( g2cDoc *doc, g2cSignal * signal,
       arg_name_index++;
     }
 
+  g_type_class_ref( widget->klass );   /* stops "unable to lookup signal" error  */
   signal_type = widget->klass;
   signal_id = g_signal_lookup( signal->name, signal_type );
   if (signal_id > 0) 
@@ -6231,8 +6298,10 @@ g2c_widget_create_signal_handler_cb( g2cDoc *doc, g2cSignal * signal,
       }
       fprintf( CURRENT_FILE, "void\n");
         
-      fprintf (CURRENT_FILE, "%s (%s* widget,\n",
-	   signal->handler, widget->klass_name);
+      fprintf (CURRENT_FILE, "%s (%s* %s,\n",
+	      signal->handler, 
+              widget->klass_name, 
+              widget->name);
       /* Print each of the args for the signal */
       i = 2;
       if (has_extra_args == TRUE) {
@@ -6249,9 +6318,10 @@ g2c_widget_create_signal_handler_cb( g2cDoc *doc, g2cSignal * signal,
            g_type_name( signal_query.return_type ),
            G_TYPE_FUNDAMENTAL( signal_query.return_type ) == G_TYPE_OBJECT ? "*" : "" );
 
-  fprintf( CURRENT_FILE, "%s (%s* widget,\n",           
+  fprintf( CURRENT_FILE, "%s (%s* %s,\n",           
            signal->handler,
-           widget->klass_name);
+           widget->klass_name,
+           widget->name);
   
 
   /*

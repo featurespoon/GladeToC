@@ -80,8 +80,6 @@ init_types( g2cDoc *doc )
   GTK_TYPE_BUTTON;
   GTK_TYPE_ACCEL_LABEL;
   GTK_TYPE_ADJUSTMENT;
- /* GTK_TYPE_ALIGNMENT; 
-  GTK_TYPE_ARROW; */
   GTK_TYPE_ASPECT_FRAME;
   GTK_TYPE_BOX;
   GTK_TYPE_BUTTON_BOX;
@@ -220,7 +218,7 @@ g2c_doc_parse( g2cDoc *doc )
   /* on exit the returned node should be an object */
 
   /* Get all of the widget types.  */
-  init_types( doc );
+  //init_types( doc );
 
   /* Now parse any top-level widgets */
   doc->current = project_node;
@@ -2219,6 +2217,9 @@ gboolean firstcol;
 
     fprintf( file,"enum\n");
     fprintf( file,"{\n");
+    if (widget->columns == NULL) {
+        g_message("No columns defined for liststore %s\n", widget->name);
+    }
     firstcol = TRUE;
     coltype = g_list_first(widget->columns);
     while (coltype != NULL) {
