@@ -2410,7 +2410,8 @@ output_widget_create( g2cWidget *widget,
                        ( strcmp( widget->parent->klass_name, "GtkActionBar"       ) == 0 ) ||
                        ( strcmp( widget->parent->klass_name, "GtkListBoxRow"      ) == 0 ) ||
                        ( strcmp( widget->parent->klass_name, "GtkMenuButton"      ) == 0 ) ||
-                       ( strcmp( widget->parent->klass_name, "GtkSearchBar"       ) == 0 ) ) 
+                       ( strcmp( widget->parent->klass_name, "GtkSearchBar"       ) == 0 ) ||
+                       ( strcmp( widget->parent->klass_name, "GtkAlignment"       ) == 0 ) ) 
               {
                   fprintf( file,
                         "\tgtk_container_add(GTK_CONTAINER(gui->%s), GTK_WIDGET(gui->%s));\n",

@@ -107,7 +107,6 @@ void create_gtk_entry( g2cWidget *widget );
 void create_gtk_file_chooser ( g2cWidget *widget );
 void create_gtk_file_chooser_button ( g2cWidget *widget );
 void create_gtk_frame( g2cWidget *widget );
-//void create_gtk_hscale( g2cWidget *widget );
 void create_gtk_iconview( g2cWidget *widget );
 void create_gtk_link_button( g2cWidget *widget );
 void create_gtk_liststore( g2cWidget *widget );
@@ -125,10 +124,10 @@ void create_gtk_scale( g2cWidget *widget );
 void create_gtk_scale_button( g2cWidget *widget );
 void create_gtk_scrollbar( g2cWidget *widget );
 void create_gtk_scrolled_window( g2cWidget *widget );
+void create_gtk_separator ( g2cWidget *widget );
 void create_gtk_spin_button( g2cWidget *widget );
 void create_gtk_tree_selection( g2cWidget *widget );
 void create_gtk_treeview( g2cWidget *widget );
-//void create_gtk_vscale( g2cWidget *widget );
 void create_gtk_window( g2cWidget *widget );
 
 /* Other functions */
@@ -245,10 +244,6 @@ static g2cCreateFunction create_functions[] =
       { NULL },
       NULL },
 
-//    { "GtkHScale", NULL,
-//      { NULL },
-//      create_gtk_hscale },
-
     { "GtkIconView", NULL,
       { NULL },
       create_gtk_iconview },
@@ -340,7 +335,11 @@ static g2cCreateFunction create_functions[] =
     { "GtkScrolledWindow", NULL,
       {  NULL },
       create_gtk_scrolled_window },
-
+      
+    { "GtkSeparator", NULL,
+      { NULL },
+      create_gtk_separator },
+      
     { "GtkSpinButton", NULL,
       { NULL },
       create_gtk_spin_button },
@@ -389,17 +388,9 @@ static g2cCreateFunction create_functions[] =
       { NULL },
       NULL },
 
-//    { "GtkVScale", NULL,
-//      { NULL },
-//      create_gtk_vscale },
-
     { "GtkWindow", NULL,
       { NULL },
       create_gtk_window },
-      
-    { "GtkSeparator", "gtk_separator_new (GTK_ORIENTATION_HORIZONTAL)",
-      { NULL },
-      NULL },
 
     { NULL, NULL,
       { NULL },
@@ -502,12 +493,6 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkGammaCurve", "min_x" },
     { "GtkGammaCurve", "min_y" },
     { "GtkGammaCurve", "max_y" }, 
-    { "GtkHScale", "value" },
-    { "GtkHScale", "lower" },
-    { "GtkHScale", "upper" },
-    { "GtkHScale", "step" },
-    { "GtkHScale", "page" },
-    { "GtkHScale", "page_size" }, 
     { "GtkImage", "image_visual" },
     { "GtkImage", "image_type" },
     { "GtkImage", "image_width" },
@@ -540,6 +525,8 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkMessageDialog", "secondary_use_markup" },
     { "GtkMessageDialog", "text" },
     { "GtkNotebook", "label" },
+    { "GtkPaned", "orientation" },   /* in create  */
+    { "GtkPaned", "position_set" },  /* in create  */
     { "GtkPixmap", "filename" },
     { "GtkPlacesSidebar", "show_connect_to_server" },   /* deprecated */
     { "GtkPlacesSidebar", "window_placement_set" },
@@ -590,12 +577,6 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkTreeView", "vscroll_policy" },
     { "GtkTreeView", "rules_hint" },
     { "GtkTreeView", "fixed_height_mode" },
-    { "GtkVScale", "value" },
-    { "GtkVScale", "lower" },
-    { "GtkVScale", "upper" },
-    { "GtkVScale", "step" },
-    { "GtkVScale", "page" },
-    { "GtkVScale", "page_size" },
     { "GtkWidget", "child_name" },
     { "GtkWidget", "new_group" },
     { "GtkWidget", "value" },
@@ -1883,13 +1864,7 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "position", NULL, NULL, NULL },
       NULL,
       NULL },
-      
-    { "GtkPaned", "position_set",
-      "\tg_object_set(G_OBJECT(gui->%s),\"position_set\", %s, NULL);\n",
-      { "name", "position_set", NULL, NULL, NULL },
-      NULL,
-      NULL },
-      
+
     { "GtkPlacesSidebar", "open_flags",
       "\tgtk_places_sidebar_set_open_flags(GTK_PLACES_SIDEBAR(gui->%s), %s);\n",
       { "name", "open_flags", NULL },
@@ -4675,23 +4650,6 @@ gchar *title = NULL;
    
 }
 
-
-//void
-//create_gtk_hscale( g2cWidget *widget )    deprecated use GtkScale
-//{
-//  g_assert( NULL != widget );
-//
-//  fprintf( CURRENT_FILE,
-//           "\tgui->%s = (GtkHScale*) gtk_hscale_new (GTK_ADJUSTMENT (gtk_adjustment_new (%s,%s,%s,%s,%s,%s)));\n",
-//           widget->name,
-//           g2c_widget_get_property( widget, "value" ),
-//           g2c_widget_get_property( widget, "lower" ),
-//           g2c_widget_get_property( widget, "upper" ),
-//           g2c_widget_get_property( widget, "step" ),
-//           g2c_widget_get_property( widget, "page" ),
-//           g2c_widget_get_property( widget, "page_size" ) );
-//}
-
 void 
 create_gtk_liststore( g2cWidget *widget )
 {  /*  for GtkListStore and GtkTreeStore  */
@@ -5088,22 +5046,65 @@ gchar *vpolicy_name = NULL;
 }
 
 void create_gtk_paned ( g2cWidget *widget )
-{
+{   
 gchar *orientation = NULL;
+gchar *func_name = NULL;
+gchar *position_set = NULL;
+gchar *position_s = NULL;
      g_assert( NULL != widget );
      orientation =  g2c_widget_get_property( widget, "orientation" ) ;
+     position_set =  g2c_widget_get_property( widget, "position_set" ) ;
+     func_name = g2c_transform_name ( widget->klass_name, NT_FUNCTION );   /*  gtk_paned */
      if (orientation == NULL) {
          fprintf( CURRENT_FILE,
-                   "\tgui->%s = (%s*) gtk_paned_new (GTK_ORIENTATION_HORIZONTAL);\n",
+                   "\tgui->%s = (%s*) %s_new (GTK_ORIENTATION_HORIZONTAL);\n",
                    widget->name,
-                   widget->klass_name );
+                   widget->klass_name,
+                   func_name);
      } else {
          fprintf( CURRENT_FILE,
-                   "\tgui->%s = (%s*) gtk_paned_new (%s);\n",
+                   "\tgui->%s = (%s*) %s_new (%s);\n",
                    widget->name,
-                   widget->klass_name,                       
+                   widget->klass_name,
+                   func_name,                       
                    make_enumeral("GTK_ORIENTATION", orientation) );
      }
+     if  (position_set == NULL) {
+         fprintf( CURRENT_FILE,
+                 "\tg_object_set(G_OBJECT(gui->%s),\"position_set\", FALSE, NULL);\n",
+                 widget->name);
+     } else {
+         position_s = g2c_get_bool_s(position_set);
+         fprintf( CURRENT_FILE,
+                 "\tg_object_set(G_OBJECT(gui->%s),\"position_set\", %s, NULL);\n",
+                 widget->name,
+                 position_s);
+         g_free( position_s );
+     }
+}
+
+void create_gtk_separator ( g2cWidget *widget )
+{   
+gchar *orientation = NULL;
+gchar *func_name = NULL;
+     g_assert( NULL != widget );
+     orientation =  g2c_widget_get_property( widget, "orientation" ) ;
+     func_name = g2c_transform_name ( widget->klass_name, NT_FUNCTION );   /*  gtk_separator */
+     if (orientation == NULL) {
+         fprintf( CURRENT_FILE,
+                   "\tgui->%s = (%s*) %s_new (GTK_ORIENTATION_HORIZONTAL);\n",
+                   widget->name,
+                   widget->klass_name,
+                   func_name);
+     } else {
+         fprintf( CURRENT_FILE,
+                   "\tgui->%s = (%s*) %s_new (%s);\n",
+                   widget->name,
+                   widget->klass_name,
+                   func_name,                       
+                   make_enumeral("GTK_ORIENTATION", orientation) );
+     }
+ 
 }
 
 
@@ -5252,22 +5253,6 @@ gchar *full_type = NULL;
     
 }
 
-//void
-//create_gtk_vscale( g2cWidget *widget )   deprecated use GtkScale
-//{
-//  g_assert( NULL != widget );
-//
-//  fprintf( CURRENT_FILE,
-//           "\tgui->%s = (GtkVScale*) gtk_vscale_new (GTK_ADJUSTMENT (gtk_adjustment_new (%s,%s,%s,%s,%s,%s)));\n",
-//           widget->name,
-//           g2c_widget_get_property( widget, "value" ),
-//           g2c_widget_get_property( widget, "lower" ),
-//           g2c_widget_get_property( widget, "upper" ),
-//           g2c_widget_get_property( widget, "step" ),
-//           g2c_widget_get_property( widget, "page" ),
-//           g2c_widget_get_property( widget, "page_size" ) );
-//}
-
 /* Helpers */
 
 static gint
@@ -5415,6 +5400,7 @@ g2c_widget_new( gchar *class_name )
       } else if ( strcmp( widget->klass_name, "GtkScaleButton" ) == 0 ) { widget->klass = GTK_TYPE_SCALE_BUTTON;
       } else if (strcmp( widget->klass_name, "GtkFixed" ) == 0) {  widget->klass = GTK_TYPE_FIXED;
       } else if (strcmp( widget->klass_name, "GtkGrid" ) == 0) {  widget->klass = GTK_TYPE_GRID;
+      } else if (strcmp( widget->klass_name, "GtkSeparator" ) == 0) {  widget->klass = GTK_TYPE_SEPARATOR;
       } else if (strcmp( widget->klass_name, "GtkStack" ) == 0) {  widget->klass = GTK_TYPE_STACK;
       } else if (strcmp( widget->klass_name, "GtkStackSwitcher" ) == 0) {  widget->klass = GTK_TYPE_STACK_SWITCHER;  
       } else if (strcmp( widget->klass_name, "GtkStackSidebar" ) == 0) {  widget->klass = GTK_TYPE_STACK_SIDEBAR;  
@@ -5521,6 +5507,7 @@ g2c_widget_new( gchar *class_name )
       else if ( strcmp( widget->klass_name, "GtkLinkButton" ) == 0 )  widget->klass = GTK_TYPE_LINK_BUTTON;
       else if ( strcmp( widget->klass_name, "GtkVolumeButton" ) == 0 )  widget->klass = GTK_TYPE_VOLUME_BUTTON;
       else if ( strcmp( widget->klass_name, "GtkFixed" ) == 0 ) widget->klass = GTK_TYPE_FIXED;
+      else if ( strcmp( widget->klass_name, "GtkSeparator" ) == 0 ) widget->klass = GTK_TYPE_SEPARATOR;
       else if ( strcmp( widget->klass_name, "GtkStack" ) == 0 ) widget->klass = GTK_TYPE_STACK;
       else if ( strcmp( widget->klass_name, "GtkStackSwitcher" ) == 0 ) widget->klass = GTK_TYPE_STACK_SWITCHER;
       else if ( strcmp( widget->klass_name, "GtkStackSidebar" ) == 0 ) widget->klass = GTK_TYPE_STACK_SIDEBAR;
@@ -6354,12 +6341,12 @@ g2c_widget_create_signal_handler_cb( g2cDoc *doc, g2cSignal * signal,
   fprintf( CURRENT_FILE, "\t%-25s user_data)\n\n", "gpointer" );
   fprintf( CURRENT_FILE,
            "{\n"
-           "\t/* %s *%s = (%s*) g_object_get_data (G_OBJECT (widget), \"owner\"); */\n"
+           "\t/* %s *%s = (%s*) g_object_get_data (G_OBJECT (%s), \"owner\"); */\n"
            "\n" ,
-           window_class,  /* Window2 */
-           "prog",  /* window->name  */
-           window_class  /* Window2 */
-           //widget->name /* interrupt_button */
+           window_class,  /* Top Window */
+           "prog",  /* top-level instance  */
+           window_class,  /* Top Window */
+           widget->name   /* first argument - the object of the signal  */
          );
   if (signal_id > 0) {
     if ( strcmp(g_type_name( signal_query.return_type ), "gboolean") == 0 ) {
