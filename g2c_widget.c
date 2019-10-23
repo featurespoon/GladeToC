@@ -4155,7 +4155,7 @@ gchar *yscale = NULL;
   fprintf( CURRENT_FILE,
            "\tgui->%s = (GtkAlignment*) gtk_alignment_new (%s, %s, %s, %s);\n",
           widget->name, xalign, yalign, xscale, yscale);
-  g_message("GtkAlignment is deprecated and may give compiler warnings.\n Advise using instead in Common tab, settings under Widget Spacing.\n");
+  g_message("GtkAlignment is deprecated and may give compiler warnings.\n");
   g_free( xalign );
   g_free( yalign );
   g_free( xscale );
@@ -5382,6 +5382,7 @@ g2c_widget_new( gchar *class_name )
       } else if (strcmp( widget->klass_name, "GtkLayout" ) == 0) {  widget->klass = GTK_TYPE_LAYOUT;
       } else if (strcmp( widget->klass_name, "GtkListBoxRow" ) == 0) {  widget->klass = GTK_TYPE_LIST_BOX_ROW;
       } else if (strcmp( widget->klass_name, "GtkMenu" ) == 0) {  widget->klass = GTK_TYPE_MENU;
+      } else if (strcmp( widget->klass_name, "GtkPaned" ) == 0) {  widget->klass = GTK_TYPE_PANED;
       } else if (strcmp( widget->klass_name, "GtkPopover" ) == 0) {  widget->klass = GTK_TYPE_POPOVER;
       } else if (strcmp( widget->klass_name, "GtkToolbar" ) == 0) {  widget->klass = GTK_TYPE_TOOLBAR;
       } else if (strcmp( widget->klass_name, "GtkInfoBar" ) == 0) {  widget->klass = GTK_TYPE_INFO_BAR;
@@ -5410,6 +5411,7 @@ g2c_widget_new( gchar *class_name )
       } else if (strcmp( widget->klass_name, "GtkTextBuffer" ) == 0) {  widget->klass = GTK_TYPE_TEXT_BUFFER;
       } else if (strcmp( widget->klass_name, "GtkTextView" ) == 0) {  widget->klass = GTK_TYPE_TEXT_VIEW;
       } else if (strcmp( widget->klass_name, "GtkFlowBoxChild" ) == 0) {  widget->klass = GTK_TYPE_FLOW_BOX_CHILD;
+      } else if (strcmp( widget->klass_name, "GtkViewport" ) == 0) {  widget->klass = GTK_TYPE_VIEWPORT;
       } else  if ( NULL == g_type_class_peek( widget->klass ) )
                  g_message( "Invalid type: %s\n", widget->klass_name );
  }

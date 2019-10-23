@@ -1,0 +1,211 @@
+Notes on how to use Glade
+
+Horizontal and Vertical boxes.
+Setting the box homogeneous means that all children of the GtkBox are forced to get the same amount of space.
+Fill setting: applies if there is more space available than the child widget requested. Fill ON means that the extra space is allocated to the child. Fill is OFF means that the extra space is left as padding. Expand setting: if ON means that the child should be allocated extra space when the parent grows. The default is OFF.  Fill has no effect if Expand is set to OFF. If Fill is ON, but Alignment: Horizontal in the Common Tab is not Fill, then Fill ON in the packing tab has no effect. The best packing options seem to me to be Fill: Off, Expand: Off, and use the Common tab settings under Widget Spacing for Expand and Alignment.
+'Add centre child' will effectively add 1 to the number of items. You can adjust the position numbers in the packing tabs of the widgets to change their order in a box without this setting, which can cause problems.
+
+Baseline 
+This only applies to Horizontal Boxes and rows of a Grid where there is more vertical space available than requested. 'Baseline' means a typographical baseline position common to all children of a container and may be set to be aligned at one of the Top, Centre or Bottom of the available extra space. Every Box has a Baseline Attribute. By default, the Baseline of a box is set to Centre. To make use of a baseline, a widget must set its vertical alignment to 'Baseline'. Setting a baseline for a vertical Box has no effect. For Grids, Baselines are not effective in Glade. For a Grid a 'global' baseline should be defined for all the rows in the Grid by setting the row number in 'Baseline Row' and the vertical alignment in the Grid's Common tab to 'Baseline', but there does not seem to be a way in Glade to set a row's baseline (gtk_grid_set_row_baseline_position). If you set up, say, a Label in the baseline row and set its vertical alignment to 'Baseline', the result is the same as 'Fill'.
+
+Buttons
+Stock images can be added by selecting "Stock Button" and then clicking on the combobox which produces a very long list of stock images.  The text that appears against the image is derived from the name of the stock image. e.g. gtk-cancel becomes "Cancel".  Select 'Always show image'. If you choose 'Label with optional image' you must create a GtkImage object and add that using the pencil icon. With the GtkImage you can use a file name, preferably given as an absolute path.  The label text can be freely chosen. 
+Do not select "Add custom content", it does nothing.  
+"Action Name" consists of two parts e.g. win.colour where the first part indicates an action group and the second part the action name.  Their processing to set up handlers must be coded in initialise stubs.  See for example test34 and the Action document. This inactivates any defined handlers to the widget; they are expected to be set up for the actions separately in the processing of the actions. It also over-rides setting the widget to 'insensitive'. A widget can only have one action group with a given group name.
+
+Labels
+Use Markup rather than Attributes. You can do most formatting with markup. For angle (which is in degrees) to work, selectable must be unticked, 'Never wrap' selected, and 'Ellipsis location' set to None. Separately, 'Track visited links' is not supported.
+Aternatively to markup you can if you wish use 'Edit attributes'.  Selecting this brings up a list of formatting attributes which can be assigned values in various ways. If 'Absolute Size' and 'Size' are both assigned values, 'Absolute Size' takes precedence. 'Scale' applies to these sizes and it is advisable for size times scale not to exceed 50. 'Variant' small capitals and any value of 'Stretch' may cause the choice of font to be over-ridden. Run-time errors may appear. 
+Using markup cancels the use of 'Edit attributes'.
+
+Entry boxes
+To set up a 'Text Buffer', click on the pencil icon on the right and in the resulting window that pops up, click on New then OK. This will create an EntryBuffer linked to this Entry box and enter it against 'Text Buffer'.
+For passwords: 
+set Purpose to Password
+set visibility unticked
+set Invisible Character unticked.
+Caps lock warning should be ticked so that users are warned if they're typing passwords in capitals.
+
+Combobox
+Click on Tree Model.  Click on New. A new liststore associated with the combobox is created. 
+Click on 'Has Entry'. An internal GtkEntry box is created enabling users to enter their own data into the combobox.
+You must set 'ID Column' to a value other than -1 to set a returned id value in the 'changed' callback (using gtk_combo_box_get_active_id).  It's best to make the id value that of the text column in the liststore.  If the numeric id is returned the text value can be obtained from the liststore, but it requires several lines of cost involving GtkTreeIter.
+'Entry Text Column' specifies which of the liststore's columns in the selected row is put into entry box.
+If you set 'Entry Text Column' to be anything other than -1, you should not have a GtkCellRendererText set up with the same liststore column
+number as 'Entry Text Column' as you will otherwise duplicate that liststore column in the drop-down display.  In fact if all you want is a list of text values in one column, set 'Entry Text Column' and don't have any GtkCellRendererTexts.
+
+With comboboxtext there is no liststore but you can set up a GtkEntry internal widget. You can enter the list of items in Glade to display in the drop-down.  You do this under 'Combo Box Text Attributes'.  In the box under 'List of Items' click on <Type here> and replace it with the required text. In the next column against the text you entered you may click on <Enter Id> and enter a number identifying the text option, although it does not seem really necessary.
+The callback for the 'changed' event on the widget is obtained using gtk_combo_box_text_get_active_text and returns the text not the id.
+
+Radio Buttons
+You must indicate the grouping of two or more radio buttons together. Under 'Button Attributes' in the General tab click on the pencil icom to the right of 'Group:'.  Up will come a tree structure of widgets with other radio buttons having a check box to the left.  Choose one that belongs to the same group.  Do this for all members of the group. For Radio Menu Items, 'Group:' is near the top of the General tab.
+
+Tearoff menus have been deprecated for both Combobox and ComboboxText.
+
+ListBox
+This requires the addition of ListBoxRows. In Glade right-click on the icon and select Add Row.  Then add a widget into the row.  Multiple selections are not supported.
+
+Overlay
+Overlay provides a container allowing widgets to be laid on top of each other. It is useful for contexts where a widget may need to appear for a short time, such as displaying status messages. The first child should be a background or larger item e.g. textview. To get the second and subsequent widgets into an Overlay, first select the widget with a left-button click, then right-click on the Overlay icon in the top right-hand panel and select "Add Widget Here". The first child should probably have both Horizontal and Vertical Alignments in the Common tab set to 'Fill'. It is probably best for all subsequent widgets inside the Overlay to have different (Start, Center and End) settings for alignment.
+
+ToolPalette
+To add ToolItemGroups and ToolItems to the ToolItemGroups use the editor by clicking on the Pencil Icon at the toolbar along the top, or the Edit option in the right-click menu on the ToolPalette icon. In the Hierarchy tab of this editor use the Add button to add ToolItemGroups and right-click on a ToolItemGroup to add one of a number of kinds of ToolItem.
+
+TreeView
+It is best to enclose the GtkTreeView inside a GtkViewport inside a GtkScrolledWindow. If you want scrollbars which is done using GtkAdjustment, set them in the GtkScrolledWindow General tab, not the GtkTreeView. When a GtkTreeview is created, an internal widget GTtkTreeSelection is set up. It is available to set or check the selection status (e.g. single or multiple) of the tree, as well as select and deselect individual rows. For any data to be displayed in the TreeView it must be associated with a GtkListstore or GtkTreeStore. If this is done correctly, data added, changed or deleted in the Liststore is automatically reflected in the Treeview. In the General tab, on 'TreeView Model', click on the pencil icon. A window pops up. Click on New. A new Liststore associated with the treeview is created. 'Level Indentation' only applies if GtkTreeStore is used.
+
+You need to define the columns of the GtkListstore or GtkTreeStore.  They are entered in the box in the General tab under 'Add and remove columns:'.  Click on <define a new column>.  A large scrollable menu of types appears. Select the column type. gchararray means a string.  Then enter a column name in a similar way.  A facility to add and remove rows in the liststore (but not the treestore) is available.  Interestingly signals are available to trigger processing when rows in the store are inserted, changed or deleted, although the processing is not needed to update the Treeview. A column can be used for tooltips. It is indicated by setting the liststore column number in 'Tooltip Column' in the GtkTreeView General tab.
+
+To set the columns up for the treeview, select the treeview in the left-hand panel. A pencil box appears at the bottom of the panel. Click on that and a dialog appears.  Follow the tips that are shown.  Press on the '+' icon. That creates a column.  Right-click on the column to bring up a menu.  For each column in the treeview you need to select one of the child cellrenderers.  The menu also provides another way to Add a new column. For the column, enter an ID and stretch the dialog down to show the Title property to set the title to appear in the column heading. The properties of the columns and cell renderers can be changed later in the right hand panel as usual when this dialog is closed.
+
+In order for a column to display a column of the liststore, the cellrenderer property 'text' must be set to the column number of the liststore, starting at zero. The name of the column in the liststore cannot be used, it has to be a number. For columns used for accelerators (using GtkCellRendererAccel) the expected text values in a liststore are those of accelerator keys e.g. "q", "Ctl z", "Alt v".
+
+Dialogs
+When a GtkDialog is created, two internal widgets are also created: a vertical GtkBox and a ButtonBox called "dialog-action_area1".
+These should not be deleted.  Only buttons should go in the "dialog-action_area1".  The number of 'slots' for buttons can be changed. The 'Response Id' of the button is the returned value which the caller (gtk_dialog_run) in a callback receives from the dialog box. Do not add signal handlers to these buttons; clicking these  butttons is already handled.
+The main part of the dialogue should be added inside the vertical GtkBox, usually starting with more boxes. Make sure that in the Common tab, 'Sensitive' is selected and 'Visible' is not selected.  In the General tab 'Decorated' should be selected for the title bar and minimise button to be visible, and 'deletable' not selected for the delete icon (top right hand corner) not to be visible. 'Transient For' should also be selected. This will ensure that the dialog window does not appear behind the main window.  In Glade a window will come up requesting you to select the window to be underneath the dialog, usually the main window.
+
+FileChooserDialog
+When a FileChooserDialog is created, two internal widgets are created as for GtkDialog. Buttons can be added as for GtkDialog and the 'Response Id' of each button should be set up to give a distinguishable return value. You need to set the 'Action' to indicate whether files or folders are being selected and whether for reading or saving.  In addition it is very useful to set up a file filter. Click on the pencil icon against 'Filter' and click 'New' and a new GtkFileFilter widget is created.  Click on the file filter widget and add patterns (e.g. *.c or *.doc) or a mime type (e.g. text/plain or image/*).  It's best to only add one mime type.  Wildcards can be used. 
+
+FileChooserButton
+The dialog created here is not visible at all. The same options for 'Action' and 'Filter' exist.
+
+AppChooserDialog
+A content type is a platform specific string that defines the type of a file. On UNIX it is a mime type like "text/plain" or "image/png". On Win32 it is an extension string like ".doc", ".txt" or a perceived string like "audio". Such strings can be looked up in the registry at HKEY_CLASSES_ROOT.
+
+https://www.sitepoint.com/web-foundations/mime-types-complete-list/
+
+Frame
+When a GtkFrame widget is created, two child widgets are also created: GtkAlignment and GtkLabel. The GtkAlignment widget should be ignored and has no effect. It is deprecated. It can be deleted. They say "The desired effect can be achieved by using the “halign”, “valign” and “margin” properties on the child widget". In the Common tab for GtkFrame, margins have no affect. Border width, however, does.
+GtkAspectFrame is a child type of GtkFrame, but the current version of Glade does not create any child widgets when a GtkAspectFrame is created, so that it cannot have a label, although label xalign and yalign values can be set.
+
+Fixed
+This is more like Windows SDK. Just add this inside a window and add entries, buttons etc.  Widget position (horizontal: x and vertical: y) is set up under the Packing tab.  For widgets other than GtkEntry, width and height are set up under Common tab (scroll down) with 'Width request' and 'Height request'.  Layout does something similar but is supposed to allow scrolling but doesn't. To allow scrolling put inside a viewport inside a scrolled window.  Scrolling comes into effect when the resized window border cuts into a child widget.
+
+GtkMenubar
+The edit icon is available to bring up the editing window with a hierachy tab to enable you to edit the menu hierarchy. Select the menubar widget in the left hand panel and click on the pencil button at the bottom of the panel. This brings up the Edit Menu dialogue. Using the tips in the right hand panel, you can edit the menu hierarchy in the top left hand panel of this dialogue.
+5 different kinds of menuitem are available: normal, image, tick, radio and separator. You can also add child menus.  To put an image in a menu item you may either use Stock Item (which brings up a long list) or  'Custom Label and Image'. 
+In this section Stock ID works as for Stock Item, but you can then enter a custom label. In the case of  Stock Item the label text is derived from the name of the stock image.  With the 'Custom Label and Image' the label text can be freely chosen.
+For Icon name, click on the pencil icon to the right to bring up a number of selections of named icons from which to choose. 
+For File Name click on the folder icon on the right to bring up a file selection. The image file needs to be in the same folder as the generated files. 
+For Resource Name, you can also enter the file name directly. 
+In structure the MenuBar looks like this:
+GtkMenuBar->
+            GtkMenuItem ->
+			              GtkMenu ->
+									GtkMenuItem: menu option
+									GtkmenuItem: menu option
+            GtkMenuItem ->
+                          .....			
+At the top level a GtKMenuBar consist of a sequence of GtkMenuItems. Each submenu hangs off a GtkMenu.
+
+GtkMenu
+GtkMenus when created appear at the top level in Glade, not children of any other widget.  To add menu items, bring up the Edit Menu dialogue as above. Using the tips in the right hand panel, you can build up the menu in the top left hand panel of this dialogue.  There are six kinds of menuitem: Normal, Image, Tick or Check, Radio, Separator and Recent (but Recent doesn't seem to work). You can also create submenus by selecting a 'child' item, again one of those six kinds.  If you do that, a new GtkMenu widget is automatically created to hold the list of child menuitems as a submenu. When the Edit Menu dialogue is closed you may further edit the properties of the menuitems as usual in the right hand panel when you select the menuitem icons which have now appeared in the left hand panel. 
+Some comments on GtkMenu properties: For 'Accel Group' see under Accelerators. 'Accel path's take the form <program name>/File/Quit and are used in Accelerator maps which are used to define configurable accelerators which can be manipulated in callbacks. Tearoff State and Title are deprecated. 'Reserve Toggle Size' sets whether the menu should reserve space for drawing toggles or icons, regardless of their actual presence. Anchor hints are not supported by Glade, but 'Rect Anchor dx' and '..dy' will move the top left corner of the menu to the left and down. 
+
+Menus can be activated ('popped up') from within signal callbacks - for example a handler for a button click event. The most convenient function to do this is gtk_menu_popup_at_pointer(menu, NULL) otherwise you can use gtk_menu_popup(menu,...).  However, there is a better way.
+
+Menu Button, Popup and Popover
+You can use a GtkMenuButton will bring up a menu and you have the option of either a 'Popup' or 'Popover' menu. 'Popup' enables you to make popup menus work without writing any popup code in a callback.  In Glade GtkMenu widgets can be set up as above at the top level and the Menubutton linked to it through the 'Popup' option on its General tab.  Of course callback handlers for activate events will have to be set up for each menu option. 
+Popovers have a different appearance and you can use a Modelbutton to set up a menu option and link to an Action which requires more initialisation code (see under Buttons) to associate multiple events in a table, one row for each Modelbutton menu option in the popover, with callback handlers.  In Glade, like GtkMenus, GtkPopovers are set up at the top level and the Menubutton linked to it through the 'Popover' option on the General tab, having switched on 'Use a Popover'. You must link the other way, too. In the Popover General tab go to the 'Relative to' property and click on the pencil icon. A window 'Choose a widget in this project' opens up. Select the menubutton and close.  So the structure is:
+GtkMenuButton ->
+                 GtkMenu ->  ('Popup')
+			               GtkMenuItem: menu option
+						   GtkMenuItem ->
+						                 GtkMenu ->
+										            GtkMenuItem: menu option
+													GtkmenuItem: menu option
+						   GtkMenuItem: menu option
+GtkMenubutton ->
+                GtkPopover ->
+			                 GtkBox ->
+							          GtkModelButton: menu option
+							          GtkModelButton: menu option
+							          GtkModelButton: menu option
+Submenus can be set up in the Edit Menu dialogue for GtkMenus.  For GtkPopovers entering a 'Menu name' in order to set up a submenu does not seem to work.   Use PopoverMenu (below) for submenus.
+However, Popovers do not have to use Modelbuttons. They can use checkbuttons, togglebuttons or radiobuttons which do not need Actions.	
+Modelbuttons might be better called ModelMenuItems.	
+
+PopoverMenu
+This enables multiple menus to be defined, some of which can be submenus. Each menu is held in a box inside GtkPopovermenu. The second and subsequent boxes are added by setting in the General tab of GtkPopoverMenu number of submenus to 2 or more, and 'Edit Menu' to 1 more thsn the current number of child boxes	(this number will not be saved). A greyed area opens up in the central pane where a new box can be added. GtkModelButtons are added into each box, one for each menu option as above. In the packing tab of one of these boxes, enter a submenu name, thereby marking the ModelButtons in this box as a submenu. A submenu name of 'main' means the toplevel menu.   This is then linked-to from a menu option of another menu by entering the submenu name against 'Menu Name' on the General tab. 'Menu name' cannot be used with 'Action Name'. 
+GtkMenubutton ->
+                GtkPopoverMenu ->
+			                     GtkBox ->
+							              GtkModelButton: menu option
+							              GtkModelButton: menu option  Menu-name refers to submenu
+							              GtkModelButton: menu option
+                                 GtkBox ->  (submenu)
+							              GtkModelButton: menu option
+							              GtkModelButton: menu option
+							              GtkModelButton: menu option
+
+Toolbars
+These may only be horizontal.  The vertical option does not work. Toolbuttons must be added to the toolbar. This is done by selecting the GtkToolbar in the left panel and clicking on the pencil icon at the bottom of the panel. The 'Tool Bar Editor' window pops up. This enables toolbuttons of 6 different types (button, toggle, radio, menu, custom, separator) to be added and configured as desired. Further changes to the toolbuttons can be made later in the right panel. Toolbuttons in a Toolbar must have "Is Important" selected if their label text is to be seen.  Menus in toolbars also do not work directly: Glade (3.22) does not provide the possibility to add a GtkMenu to a GtkMenuToolButton. 
+One way with GtkMenuToolButton is to create a separate GtkMenu and call gtk_menu_tool_button_set_menu to connect them in initialise code. Another way is to activate a popup menu from a GtkToolButton using a signal handler.
+
+Notebook
+When you create a GtkNotebook in Glade, three child labels ("page 1", "page 2", "page 3") are automatically created with it along the top. Some can be deleted if that's too many. Plainly the label text can be changed, formatted and augmented with an image as required. The tab labels can also be hidden by unticking the 'Show Tabs' checkbox in the Ganeral tab for the notebook. The position of the tab labels may also be changed to either side or the bottom of the notebook. To create a page under a label, first select the page with 'Edit Page' in the General tab for the notebook. The first page is numbered zero. You can then drop a container such as a GtkBox into the shaded area under label, and proceed from there to build up the page.  To add a new page, increment 'Edit Page' to the number of the new page, bearing in mind that page numbers start at zero. If you have 3 pages so far, the third page is numbered 2. So to add a 4th, set 'Edit Page' to 3. There is now an additional greyed area into which to drop a new label as well as the area to hold the contents of the new page.
+If 'Start Action' or 'End Action' are toggled additional grey areas appear into which widgets can be dropped.  These 'action widgets' appear before and after the notebook tabs.  You can use a GtkBox if you need to pack more than one widget on the same side.
+
+Stack
+It is best to put the GtkStack and GtkStackSwitcher into two 'slots' in a GtkBox. GtkStack is a container and pages are placed into it. The first page can be added by dragging as usual. To add a further page to the stack, in GtkStack General tab, enter into 'Edit Page' the number of the new page MINUS 1.  So for a new third page, enter 2, and Number of Pages must be at least 3. You can then drag a widget perhaps a container, a GtkBox for example, into the GtkStack shaded box to form the container for the new page.  Use 'Edit Page' to switch between pages to add widgets and set their properties. The 'Edit Page' property is not saved. Special properties of a page are found on the Packing tab: name, title, icon name, position and 'needs attention'. The title is displayed on the button if there is no icon name. The icon name must be taken from the Adwaita theme. There is no menu to find it as with Entries. The 'needs attention' flag causes a blue spot to be displayed on the corresponding button, if it is not the current one, to indicate that a page needs user attention. 
+StackSwitcher icon size should not exceed 6. I would favour a transition duration of at least 700 (milliseconds).
+If you want the switcher buttons at the top (above the stack) then you must pack the stack and the switcher with pack type End.  This is so that the stack is declared before the switcher.  If the switcher is packed last but at the end it will appear before the stack which was also packed at the end.  Items which are packed at the end will appear in the opposite order of packing.
+StackSidebar works the same way as StackSwitcher except that it appears on the side rather than at the top or bottom. Also icons added to the pages do not appear on the sidebar buttons. Again for the sidebar to appear the stack must be packed before the sidebar.
+Do not drop GtkStack directly into the content area of a GtkDialog. Glade goes into a tizzy if you do this. Drop a GtkBox in first.
+
+Accelerators
+These only work when the top-level window is in focus.
+
+To create an accelerator on a widget (but it only works with the top-level window), first create an accel group. 
+This appears at the top level. Click on it and select the signals tab. Against the signal 'accel-activate' enter under Detail the name of the keystroke such as <Control>q or <Shift><Alt>F3 (just like that with the pointed brackets) and enter the name of an event handler (which you will need to complete) plus 'user data'. For the latter you will be given a window with the names of all the widgets. From this list you should choose the widget you want to associate the handler with. 
+It's worth pointing out that this way only the keystroke will trigger the handler. A click on the widget will have no affect. For menu items, the keystroke may appear alongside the name, and should be used rather clicking on the name!
+
+Another way (probably better):
+for a widget such as a button, set up a signal in the signals tab. (An accelerator group must have been created)
+Create an accelerator for it in the Common tab against "Accelerators:".  
+Click on the pencil icon and up pops a window giving a list of possible signals and accelerator keys.
+For the signal already set up. click on "Choose a key". It changes to "New Accelerator.." and PRESS THE KEYS YOU WANT as the accelerator e.g Alt-y and click OK.  Done. As long as the signal handler for the accelerator is set up (could be done afterwards) then the accelerator will be available.
+This way, either a mouse click or a keystroke will trigger the handler code.
+
+Link Button
+Glade makes no provision for a label, but a label can be set using, in the Common tab, Widget name. Otherwise the url itself appears.
+
+Header Bar
+If a subtitle is filled in, it will appear regardless of whether 'Reserved space for subtitle' is ticked or not.  Against 'Decoration layout' in the General tab, what is required is some variation of "menu:maximize,minimize,close" to specify which elements of the window decoration you wish to appear and in what order. If 'Show window controls' is not ticked, 'Decoration layout' is greyed out and no window controls appear in the header. In order to add a GtkBox or whatever widgets are required for the main part of the window, you must select in the top-level Window General tab 'Client side window decorations'.  A greyed-out area is then available to drag widgets into.
+ 
+Search Bar
+The GtkSsearchBar should be placed inside a box inside the window so that other widgets can be added later.  The GtkEntry is placed into the small grey box inside the searchbar in the central panel. For the search bar to be hidden until the user presses a key, the search mode must not be enabled. Set up a handler for the top-level window for the key-press-event,
+which is under GtkWidget if you scroll down. You should not set up a key accelerator for this handler, which is there to detect any key press in the window.  The handler must return the value from gtk_search_bar_handle_event (see the GtkSearchBar documentation).
+
+Infobar
+When an Infobar is created in Glade, two internal widgets, a ButtonBox and a Box are created as well. These should not be deleted. The ButtonBox constitutes the action area which is therefore a row of buttons, and Box the content area to display messages or generally, information. Initially the ButtonBox has 3 slots for buttons, but this number can be changed. Not all slots must be filled. When adding a button, set its Response Id to a value appropriate for its purpose e.g. GTK_RESPONSE_OK.  Similarly the Box is created with 3 slots.  Typically slots in the content area box are filled by labels, which will hold the status messages. There is an optional close button, but it does not in itself do anything, except produce, when clicked, a response id of GTK_RESPONSE_CLOSE. The handler for response events is then important to deal with all response codes used, including GTK_RESPONSE_CLOSE, which may then cause the infobar to be hidden.
+
+GtkIconView
+The column numbers are the column numbers of the ListStore. Although Glade allows you to Edit the GtkIconView as you can with GtkTreeView, so that you can apparently set up Cell Renderers of various kinds, they have no effect.  Although GtkIcvonview has its own adjustments and therefore sometimes scrollbars, it is better to enclose it in a GtkViewport and that in a GtkScrolledWindow to get the scrollbars to appear when necessary. To turn off the text column set the column number to -1.
+
+GtkFlowBox
+To add widgets to the GtkFlowBox (many kinds of widget are possible) select the GtkFlowBox icon in the left panel, find the Plus icon at the bottom of the panel and click it.  A greyed area appears into which a widget (e.g. a button) can be placed.  Notice that a GtkFlowBoxChild appears under GtkFlowBox on the left. The new widget appears under that. Clicking the Plus icon more times produces further GtkFlowBoxChilds and grey areas into which more widgets can be placed. It is useful to wrap the GtkFlowBox in a GtkViewport within a GtkScrolledWindow.
+
+
+Tooltips
+Tooltips are easy to set up in the Common tab for many widgets, including icons.
+Tick 'Use Markup' to define formattted text for tooltips using the pango markup language.
+The markup language, similar to but not the same as HTML with CSS in web pages, is described in
+https://developer.gnome.org/pygtk/stable/pango-markup-language.html
+Example:
+<span foreground="blue" size="larger">Blue text</span> makes me <i>calm</i>.
+
+Tooltips containing icons can be achieved by ticking Custom against Tooltip and setting up a signal query-tooltip.
+The handler for that signal must use functions on GtkTooltip (one of the handler parameters) to set up tooltip text (with a markup option) and also an icon. It must return TRUE.
+
+Assistant
+When you 'create' a GtkAssistant window in Glade it automatically adds three label child widgets as pages. For GtkAssistant leave 'Use Header Bar' as -1 (switched off). Ignore 'Number of Pages'. It doesn't seem to work. For each of the label 'pages' in the packing tab, set the Page Type as desired, enter a title and set 'Initially Complete' to ON.  'Initially Complete' activates the 'Next' button so need not be set for the last page. If it is set, the 'Apply' button will appear. Set the position numbers to order the pages. 
+
+It is important to set up a handler in GtkAssistant for the cancel signal. The handler must terminate the program (e.g. assistant1_terminate(prog); ).  The 'destroy' signal does not work, so the close button in the window header is ineffective. As it is, you can't close the program in the normal way! As well as the 'Cancel' button, the cancel signal does apply to the close button, and also to the 'Apply' button should it appear.
+
+You can put a container around a label by right-clicking on the label in the left-hand panel and selecting 'Add parent', and then select for example, 'box'. This will enable you to build up a useful dialogue by adding further widgets, or boxes, to the box.  To add a further page, set all the pages to 'Initially Complete' ON. Save and close the glade file. Open it again and a greyed-out area appears in the GtkAssistant window. A GtkBox or other widget can be dragged into this area to start a new page.  You need to be aware that if you have a summary page, there is no way back. Once you have finished with that page you have to close the program.
+
+Why tick 'Double Buffered'?
+This makes the display of widgets smooth. Ddouble buffered widgets don't flicker.
