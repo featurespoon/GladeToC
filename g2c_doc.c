@@ -231,7 +231,7 @@ g2c_doc_output( g2cDoc *doc )
 {
   gchar *filename = NULL;
   GList *run = NULL;
-  GList *associates = NULL;
+  GList *orphans = NULL;
   GList *accel_widgets = NULL;
   GList *popups = NULL;
   g2cWidget *widget = NULL;
@@ -254,19 +254,31 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkEntryCompletion") == 0) ||
           (strcmp(widget->klass_name, "GtkStack") == 0) ||
           (strcmp(widget->klass_name, "GtkFileFilter") == 0) ||
-          (strcmp(widget->klass_name, "GtkLabel") == 0) ) {
-          associates = g_list_append(associates, widget);
+          (strcmp(widget->klass_name, "GtkLabel") == 0) ||
+          (strcmp(widget->klass_name, "GtkAccelGroup") == 0) ||
+          (strcmp(widget->klass_name, "GtkMenu") == 0) ||
+          (strcmp(widget->klass_name, "GtkPopover") == 0)  ||
+          (strcmp(widget->klass_name, "GtkPopoverMenu") == 0) ) {
+          orphans = g_list_append(orphans, widget);
       }
+      //if (strcmp(widget->klass_name, "GtkAccelGroup") == 0) {
+      //    accel_widgets = g_list_append(accel_widgets, widget);
+      //}
+      //if ( (strcmp(widget->klass_name, "GtkMenu") == 0) ||
+      //     (strcmp(widget->klass_name, "GtkPopover") == 0)  ||
+      //     (strcmp(widget->klass_name, "GtkPopoverMenu") == 0) )  {
+      //    popups = g_list_append(popups, widget);
+      //}
       /*  identify the main window  */
       if ((strcmp(widget->klass_name, "GtkWindow") == 0) ||
           (strcmp(widget->klass_name, "GtkApplicationWindow") == 0) ||
           (strcmp(widget->klass_name, "GtkAssistant") == 0) ) {  // hopefully there's no more than one
-          widget->associates = associates;
-          associates = NULL;
-          widget->accel_widgets = accel_widgets;
-          accel_widgets = NULL;
-          widget->popups = popups;
-          popups = NULL;
+          //widget->associates = associates;
+          //associates = NULL;
+         // widget->accel_widgets = accel_widgets;
+          //accel_widgets = NULL;
+          //widget->popups = popups;
+          //popups = NULL;
           g_assert (doc->project->main_widget == NULL);
           doc->project->main_widget = widget;
           MAIN_WINDOW = widget->name;
@@ -281,57 +293,45 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkMessageDialog") == 0)  || 
           (strcmp(widget->klass_name, "GtkAppChooserDialog") == 0) ||
           (strcmp(widget->klass_name, "GtkOffscreenWindow") == 0) ) {
-          widget->associates = associates;
-          associates = NULL;
-          widget->accel_widgets = accel_widgets;
-          accel_widgets = NULL;
-          widget->popups = popups;
-          popups = NULL;
+          //widget->associates = associates;
+          //associates = NULL;
+          //widget->accel_widgets = accel_widgets;
+          //accel_widgets = NULL;
+          //widget->popups = popups;
+          //popups = NULL;
           doc->project->dialogue_widgets = g_list_append(doc->project->dialogue_widgets, widget);
-      }
-      if (strcmp(widget->klass_name, "GtkAccelGroup") == 0) {
-          accel_widgets = g_list_append(accel_widgets, widget);
-      }
-      if ( (strcmp(widget->klass_name, "GtkMenu") == 0) ||
-           (strcmp(widget->klass_name, "GtkPopover") == 0)  ||
-           (strcmp(widget->klass_name, "GtkPopoverMenu") == 0) )	  {
-          popups = g_list_append(popups, widget);
       }
       run = g_list_next(run);
   }
   
-  if (popups != NULL) {
-      doc->project->main_widget->popups = 
-              g_list_concat(doc->project->main_widget->popups, popups);
-  }
-  if (accel_widgets != NULL) {
-      doc->project->main_widget->accel_widgets = 
-              g_list_concat(doc->project->main_widget->accel_widgets, accel_widgets);
-  }
   /*                 ***  End of restructuring                *** */
     
-  /*       Sets up register of widgets for each window/dialog        */
+  /*       Sets up register of widgets, and requires,  for each window/dialog        */
   
-  scan_widgets_for_register(doc->project->main_widget, doc->project->main_widget);
+  scan_widgets_for_register(doc->project->main_widget, doc->project->main_widget, doc->project->main_widget);
 
   run = g_list_first(doc->project->dialogue_widgets);
   while (run != NULL) {
           widget = (g2cWidget *) run->data;
-          scan_widgets_for_register(widget, widget);
+          scan_widgets_for_register(doc->project->main_widget, widget, widget);
           run = g_list_next(run);
   }
 
+  allocate_orphans(doc->project->main_widget, orphans);
+  
   /*                   End of  register of widgets               */ 
  
   /*   now analyse the register and requires list to ensure compilation in the right order */
   
-  analyse_requirements(doc->project->main_widget);  
+  analyse_requirements(doc->project->main_widget, doc->project->main_widget); 
+  //print_out_register(doc->project->main_widget);
   
   
   run = g_list_first(doc->project->dialogue_widgets);
   while (run != NULL) {
           widget = (g2cWidget *) run->data;
-          analyse_requirements(widget); 
+          analyse_requirements(doc->project->main_widget, widget); 
+          //print_out_register(widget);
           run = g_list_next(run);
   }
   /*                   End of analysis and re-ordering of widgets               */ 
@@ -417,8 +417,9 @@ g2c_doc_output( g2cDoc *doc )
   }
   g_free (control_file_name);
   
-  
-  output_cmake_file(doc);
+  if (doc->project->gen_cmake == TRUE) {
+    output_cmake_file(doc);
+  }
   g_free( DIR_PREFIX );
   if (CURRENT_MAIN_PARSER != NULL) 
     g2c_file_parser_destroy (CURRENT_MAIN_PARSER);

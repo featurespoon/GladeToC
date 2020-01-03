@@ -25,13 +25,14 @@ struct stat s_stat;
 
 int usage(char *prog) {
 #ifdef WIN32
-  g_print("Usage: %s [-p name] -g gladefile -d dir [-r resource] [-h]\n", prog);
+  g_print("Usage: %s [-p name] -g gladefile -d dir [-r resource] [-x] [-h]\n", prog);
 #else
   g_print("Usage: %s [-p name] -g gladefile -d dir [-h]\n", prog);
 #endif  
   g_print("\t-p\t- Project (program) name.\n");
   g_print("\t-g\t- file produced by GLADE.\n");
   g_print("\t-d\t- directory into which generated files are placed.\n");
+  g_print("\t-x\t- do not produce CMAKE file.\n");
 #ifdef WIN32  
   g_print("\t-r\t- Resource file.\n");
 #endif  
@@ -47,13 +48,14 @@ char   *glade_file = NULL;  /* The filename of the glade file */
 char   *gen_dir    = NULL;  /* The directory into which the generated files are put */
 char   *program    = NULL;
 char   *resource_file = NULL;
+gboolean gen_cmake = TRUE;
 int ret;
 
 gchar wdir[PATH_MAX];
 
 // command-line option handling 
 #ifdef WIN32
-   while ((c = getopt(argc, argv, "g:d:p:r:h"))!= -1) {
+   while ((c = getopt(argc, argv, "g:d:p:xr:h"))!= -1) {
 #else
    while ((c = getopt(argc, argv, "g:d:p:h"))!= -1) {
 #endif       
@@ -66,6 +68,9 @@ gchar wdir[PATH_MAX];
                 break;
             case 'd':
                 gen_dir = g_strdup(optarg);
+                break;
+            case 'x':
+                gen_cmake = FALSE;
                 break;
 #ifdef WIN32                
             case 'r':
@@ -99,9 +104,9 @@ gchar wdir[PATH_MAX];
   if (!check_exists ( glade_file )) return 1;
   
 #ifdef WIN32  
-  ret = g2c_common(program, glade_file, gen_dir, resource_file);
+  ret = g2c_common(program, glade_file, gen_dir, gen_cmake, resource_file);
 #else
-  ret = g2c_common(program, glade_file, gen_dir);
+  ret = g2c_common(program, glade_file, gen_dir, gen_cmake);
 #endif
   
   return ret;

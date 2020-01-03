@@ -2305,6 +2305,12 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       tree_selection_mode }, 
       
+    { "GtkTreeView", "expander_column",
+      "\tgtk_tree_view_set_expander_column(GTK_TREE_VIEW(gui->%s),  GTK_TREE_VIEW_COLUMN(gui->%s));\n",
+      { "name", "expander_column", NULL },
+      NULL,
+      NULL },
+      
     { "GtkTreeView", "model",
       "\tgtk_tree_view_set_model(GTK_TREE_VIEW(gui->%s),  GTK_TREE_MODEL(gui->%s));\n",
       { "name", "model", NULL },

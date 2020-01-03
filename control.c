@@ -167,6 +167,7 @@ gchar *filename = NULL;
 gchar *foldername = NULL;
 gchar *progname = NULL;
 gchar *resourcename = NULL;
+gboolean gen_cmake = TRUE;
 
 	TopWindow *prog = (TopWindow*) g_object_get_data (G_OBJECT (widget), "owner");	
         filename = (gchar *) gtk_entry_get_text(prog->gui->glade_file);
@@ -200,9 +201,9 @@ gchar *resourcename = NULL;
 	progname_s = g_strdup(progname);
 #ifdef WIN32 
 	resourcename_s = g_strdup(resourcename);
-	g2c_common(progname, filename, foldername, resourcename);
+	g2c_common(progname, filename, foldername, gen_cmake, resourcename);
 #else
-	g2c_common(progname, filename, foldername);
+	g2c_common(progname, filename, foldername, gen_cmake);
 #endif	
 	gtk_widget_set_sensitive(GTK_WIDGET(prog->gui->generate_button), FALSE);
 	return;

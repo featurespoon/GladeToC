@@ -129,12 +129,13 @@ typedef struct tag_g2cRegister
 {
     g2cWidget *widget;
     gchar *name;
-    gint  level;
+    guint  level;
 } 
 g2cRegister;
 
 typedef struct tag_g2cRequires
 {
+    g2cWidget *main;
     gchar *required;
     gchar *requiring;
     guint used;
@@ -169,12 +170,13 @@ typedef struct tag_g2cProject
     gchar      *resource_file;
     gchar      *pixmaps_directory;
     gboolean    gettext_support;
-    gboolean    gnome_support;
-    gboolean    gnome_help_support;
+    //gboolean    gnome_support;
+    //gboolean    gnome_help_support;
     gboolean    output_main_file;
     gboolean    output_support_files;
     gboolean    output_build_files;
-    gboolean    has_bonobo_controls;
+    //gboolean    has_bonobo_controls;
+    gboolean    gen_cmake;
   }
 g2cProject;
 
