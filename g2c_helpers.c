@@ -115,6 +115,8 @@ g2c_stringify( const gchar *pstr )
                    result = g_strconcat(temp, "\n\t\t\"", lines[i], "\\n\"", NULL);
                    g_free ( temp );
                    temp = result;
+                 } else {
+                   result = temp;
                  }
              }
              i++;
@@ -608,8 +610,8 @@ GList * item = g_list_first(widget->properties);
 g2cProp *prop;
   while (item != NULL) {
       prop = (g2cProp *) item->data;
- //     g_free(prop->key);
-//      g_free(prop->value);
+      if (NULL != prop->key) g_free(prop->key);
+      if (NULL != prop->value) g_free(prop->value);
       g_free(prop);
       item = item->next;
   }
@@ -772,6 +774,13 @@ g2cRegister *reg =  g_new0( g2cRegister, 1 );
     //g_message ("register %s\n", name);
 }
 
+void
+register_free(g2cRegister *reg)
+{
+    g_free(reg->name);
+    g_free(reg);
+}
+
 /* widget is top-level window or dialog  */
 
 void 
@@ -893,12 +902,15 @@ void allocate(g2cWidget *global, g2cWidget *widget, g2cWidget *orphan)
                 (strcmp(orphan->klass_name, "GtkPopoverMenu") == 0) )  {
         widget->popups = g_list_append(widget->popups, orphan);
     } else if ((strcmp(orphan->klass_name, "GtkListStore") == 0) || 
-                (strcmp(orphan->klass_name, "GtkTreeStore") == 0)  ||          
+                (strcmp(orphan->klass_name, "GtkTreeStore") == 0)  ||  
+                (strcmp(orphan->klass_name, "GtkTreeModelFilter") == 0)  || 
+                (strcmp(orphan->klass_name, "GtkTreeModelSort") == 0)  || 
                 (strcmp(orphan->klass_name, "GtkAdjustment") == 0) ||
                 (strcmp(orphan->klass_name, "GtkTextBuffer") == 0) ||
                 (strcmp(orphan->klass_name, "GtkEntryBuffer") == 0) ||
                 (strcmp(orphan->klass_name, "GtkImage") == 0) ||
                 (strcmp(orphan->klass_name, "GtkRecentFilter") == 0) ||
+                (strcmp(orphan->klass_name, "GtkRecentManager") == 0) ||
                 (strcmp(orphan->klass_name, "GtkEntryCompletion") == 0) ||
                 (strcmp(orphan->klass_name, "GtkStack") == 0) ||
                 (strcmp(orphan->klass_name, "GtkFileFilter") == 0) ||
@@ -1296,16 +1308,15 @@ set_widget_level(g2cWidget *main, gchar *name, gint level)
 {   // scanning register list to set named item to the supplied level
 GList *register_list;
 g2cRegister *reg;
-//guint old_level;
 
     register_list =  g_list_first( main->regster );
     while ( NULL != register_list ) {
         reg = (g2cRegister *) register_list->data;
         if (strcmp(reg->name, name) == 0 ) {
             if (reg->level != 0) {
-                //g_message("demotion required for %s\n", name);
-                //old_level = reg->level;
-                //reg->level = level;
+                if (reg->level == level)  return level;
+                //g_message("level changed for %s from %d to %d\n", name, reg->level, level);
+                reg->level = level;
                 return reg->level;
             } else {
                 reg->level = level;
@@ -1526,7 +1537,7 @@ g2cProp *prop;
             (strcmp(widget->klass_name, "GtkScrolledWindow") != 0) &&
             (strcmp(widget->klass_name, "GtkToolPalette") != 0) &&
             (strcmp(widget->klass_name, "GtkTreeview") != 0) ) {
-            g_message("vadjustment property %s found for %s\n", prop->value, widget->klass_name );
+            //g_message("vadjustment property %s found for %s\n", prop->value, widget->klass_name );
         }
       }
       if (strcmp(prop->key,"label_widget") == 0) {      
@@ -1548,6 +1559,48 @@ g2cProp *prop;
         if (strcmp(widget->klass_name, "GtkBox") != 0) {
             //g_message("submenu name property found for %s\n", widget->klass_name );
         }
+      }
+      if (strcmp(prop->key,"popover") == 0) {      
+        requires_add(global, main, widget->name, prop->value);
+        //g_message("popover name property found for %s\n", widget->klass_name );
+      }
+      if (strcmp(prop->key,"filter") == 0) {      
+        requires_add(global, main, widget->name, prop->value);
+        //g_message("filter name property found for %s\n", widget->klass_name );
+      }
+      if (strcmp(prop->key,"recent_manager") == 0) {      
+        requires_add(global, main, widget->name, prop->value);
+        //g_message("recent_manager name property found for %s\n", widget->klass_name );
+      }
+      if (strcmp(prop->key,"transient_for") == 0) {      
+        requires_add(global, main, widget->name, prop->value);
+        g_message("transient for property found for %s\n", widget->klass_name );
+      }
+       if (strcmp(prop->key,"expander_column") == 0) {      
+        requires_add(global, main, widget->name, prop->value);
+        if (strcmp(widget->klass_name, "GtkTreeView") != 0) {
+            g_message("expander_column name property found for %s\n", widget->klass_name );
+        } 
+      }
+      if (strcmp(prop->key,"popup") == 0) {      
+        requires_add(global, main, widget->name, prop->value);
+        g_message("popup property found for %s\n", widget->klass_name );
+      }
+      if (strcmp(prop->key,"relative_to") == 0) {      
+         requires_add(global, main, widget->name, prop->value);
+         g_message("relative_to property found for %s\n", widget->klass_name );
+      }
+      if (strcmp(prop->key,"accel_widget") == 0) {      
+         requires_add(global, main, widget->name, prop->value);
+         g_message("accel_widget property found for %s\n", widget->klass_name );
+      }
+      if (strcmp(prop->key,"align_widget") == 0) {      
+         requires_add(global, main, widget->name, prop->value);
+         g_message("align_widget property found for %s\n", widget->klass_name );
+      }
+      if (strcmp(prop->key,"child_model") == 0) {      
+         requires_add(global, main, widget->name, prop->value);
+         g_message("child_model property found for %s\n", widget->klass_name );
       }
       item = item->next;
   }   /*  end while  */

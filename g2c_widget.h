@@ -101,7 +101,6 @@ typedef struct tag_g2cWidget
     GList                *signals;
     GList                *accelerators;
     GList                *accel_widgets;
-    GList                *radio_groups;
     GList                *columns;
     GList                *table;
     GList                *css_classes;

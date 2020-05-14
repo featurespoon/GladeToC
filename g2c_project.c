@@ -57,13 +57,7 @@ g2c_project_new( void )
 void
 g2c_project_destroy( g2cProject *project )
 {
-  /* Deallocate the properties hash table */
-  g_hash_table_foreach( project->properties,
-                        g2c_hash_element_free_cb,
-                        NULL );
-  
-  g_hash_table_destroy( project->properties );
-  
+ 
   /* Free the top level widgets */
   g_list_foreach( project->top_level_widgets,
                   g2c_project_free_children_cb,

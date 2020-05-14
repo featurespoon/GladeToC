@@ -51,6 +51,8 @@ int     handler_id;
 
 doc = g2c_doc_new ( glade_file );
 
+if (doc == NULL ) return 1;
+
 if (program == NULL) {
     doc->project->program_name = g_strdup("g2cProgram");
   } else {

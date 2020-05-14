@@ -24,7 +24,8 @@
 static void       output_main_file( g2cDoc *doc, gchar *file_name );
 static void       parse_project_properties( g2cDoc *doc );
 static void       parse_top_level_widgets( g2cDoc *doc );
-static g2cWidget *parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverlay, g2cPackDirection child_pack );
+static g2cWidget *parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, 
+                    gboolean poverlay, g2cPackDirection child_pack );
 static g2cSignal *parse_signal( g2cDoc *doc );
 static g2cAccel  *parse_accel( g2cDoc *doc );
 static void       parse_packing( g2cDoc *doc, g2cWidget *widget );
@@ -37,9 +38,9 @@ static void       parse_rows( xmlNodePtr node, GList **rows );
 static gchar     *get_dir_prefix( g2cDoc *doc );
 
 static void       init_types( g2cDoc *doc );
-static void       output_widget_create( g2cWidget *widget,
-                                        FILE *file );
-static void       output_widget_files( g2cWidget *widget, g2cDoc *doc, gboolean bWindow, g2cWidget *parent_widget );
+static void       output_widget_create( g2cWidget *widget, FILE *file );
+static void       output_widget_files( g2cWidget *widget, g2cDoc *doc, 
+                    gboolean bWindow, g2cWidget *parent_widget );
 static void       output_widget_gui_h( g2cWidget *widget, g2cDoc *doc );
 static void       output_widget_gui_c( g2cWidget *widget, g2cDoc *doc, g2cWidget *parent_widget );
 static void       output_widget_h( g2cWidget *widget, g2cDoc *doc );
@@ -86,11 +87,6 @@ init_types( g2cDoc *doc )
   GTK_TYPE_CALENDAR;
   GTK_TYPE_CHECK_BUTTON;
   GTK_TYPE_CHECK_MENU_ITEM;
-  /*GTK_TYPE_CLIST;
-  GTK_TYPE_COLOR_SELECTION;
-  GTK_TYPE_COLOR_SELECTION_DIALOG;
-  GTK_TYPE_CTREE;
-  GTK_TYPE_CURVE;*/
   /* GTK_TYPE_DATA; */
   GTK_TYPE_DIALOG;
   GTK_TYPE_DRAWING_AREA;
@@ -160,7 +156,8 @@ g2cDoc *
 g2c_doc_new( gchar *xml_file_name )
 {
 gchar wdir[PATH_MAX];    
-  g2cDoc *doc = g_new0( g2cDoc, 1 );
+g2cDoc *doc = g_new0( g2cDoc, 1 );
+gchar *cwd = NULL;
 
   /* Every document gets a project.  One per customer please. */
   doc->project = g2c_project_new();
@@ -177,6 +174,13 @@ gchar wdir[PATH_MAX];
 
   /* Open the XML document and save a pointer to it in the struct */
   doc->xmldoc  = xmlParseFile( xml_file_name );
+  if (doc->xmldoc == NULL) {
+      g_message("Could not process glade file %s\n", xml_file_name);
+      cwd =  g_get_current_dir();
+      g_message("Current working directory: %s\n", cwd);
+      g_free( cwd );
+      return NULL;
+  }
   doc->current = NULL;
 
   return doc;
@@ -232,14 +236,12 @@ g2c_doc_output( g2cDoc *doc )
   gchar *filename = NULL;
   GList *run = NULL;
   GList *orphans = NULL;
-  GList *accel_widgets = NULL;
-  GList *popups = NULL;
   g2cWidget *widget = NULL;
   gchar *handlers_filename = NULL;
   gchar *control_file_name = NULL;
   
   /*****  Restructure the widgets  ******/
-  /*  Collect the liststores etc. under the main window or dialog widget that they precede */
+  /*  Collect the liststores etc. under the main window or dialog widget - orphans  */
   
   run = g_list_first(doc->project->top_level_widgets);
   while (run != NULL) {
@@ -251,9 +253,12 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkEntryBuffer") == 0) ||
           (strcmp(widget->klass_name, "GtkImage") == 0) ||
           (strcmp(widget->klass_name, "GtkRecentFilter") == 0) ||
+          (strcmp(widget->klass_name, "GtkRecentManager") == 0) ||
           (strcmp(widget->klass_name, "GtkEntryCompletion") == 0) ||
           (strcmp(widget->klass_name, "GtkStack") == 0) ||
           (strcmp(widget->klass_name, "GtkFileFilter") == 0) ||
+          (strcmp(widget->klass_name, "GtkTreeModelSort") == 0) ||
+          (strcmp(widget->klass_name, "GtkTreeModelFilter") == 0) ||
           (strcmp(widget->klass_name, "GtkLabel") == 0) ||
           (strcmp(widget->klass_name, "GtkAccelGroup") == 0) ||
           (strcmp(widget->klass_name, "GtkMenu") == 0) ||
@@ -261,24 +266,11 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkPopoverMenu") == 0) ) {
           orphans = g_list_append(orphans, widget);
       }
-      //if (strcmp(widget->klass_name, "GtkAccelGroup") == 0) {
-      //    accel_widgets = g_list_append(accel_widgets, widget);
-      //}
-      //if ( (strcmp(widget->klass_name, "GtkMenu") == 0) ||
-      //     (strcmp(widget->klass_name, "GtkPopover") == 0)  ||
-      //     (strcmp(widget->klass_name, "GtkPopoverMenu") == 0) )  {
-      //    popups = g_list_append(popups, widget);
-      //}
+      
       /*  identify the main window  */
       if ((strcmp(widget->klass_name, "GtkWindow") == 0) ||
           (strcmp(widget->klass_name, "GtkApplicationWindow") == 0) ||
           (strcmp(widget->klass_name, "GtkAssistant") == 0) ) {  // hopefully there's no more than one
-          //widget->associates = associates;
-          //associates = NULL;
-         // widget->accel_widgets = accel_widgets;
-          //accel_widgets = NULL;
-          //widget->popups = popups;
-          //popups = NULL;
           g_assert (doc->project->main_widget == NULL);
           doc->project->main_widget = widget;
           MAIN_WINDOW = widget->name;
@@ -293,20 +285,13 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkMessageDialog") == 0)  || 
           (strcmp(widget->klass_name, "GtkAppChooserDialog") == 0) ||
           (strcmp(widget->klass_name, "GtkOffscreenWindow") == 0) ) {
-          //widget->associates = associates;
-          //associates = NULL;
-          //widget->accel_widgets = accel_widgets;
-          //accel_widgets = NULL;
-          //widget->popups = popups;
-          //popups = NULL;
           doc->project->dialogue_widgets = g_list_append(doc->project->dialogue_widgets, widget);
       }
       run = g_list_next(run);
   }
-  
-  /*                 ***  End of restructuring                *** */
     
-  /*       Sets up register of widgets, and requires,  for each window/dialog        */
+  /*       Sets up register of widgets, and requires,  for each window/dialog           */
+  /*         Note: the global requires list is only set up under the top_level window   */
   
   scan_widgets_for_register(doc->project->main_widget, doc->project->main_widget, doc->project->main_widget);
 
@@ -316,8 +301,12 @@ g2c_doc_output( g2cDoc *doc )
           scan_widgets_for_register(doc->project->main_widget, widget, widget);
           run = g_list_next(run);
   }
-
+  //print_out_requires(doc->project->main_widget->requires);
+  /*     Now give the orphans a home   */
+  
   allocate_orphans(doc->project->main_widget, orphans);
+  
+  /*                 ***  End of restructuring                *** */
   
   /*                   End of  register of widgets               */ 
  
@@ -599,6 +588,15 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
                                    text);
              }
           } 
+      } else if( strcmp( get_node_name( node ), "accel-groups" ) == 0 )
+      {
+          temp_node = get_first_child (node);          
+          attr = temp_node->properties;   
+          if( xmlNodeIsText( attr->children ) ) {            
+            text = attr->children->content;
+            g2c_widget_set_property( widget, "accel_group", text);
+          }
+          
       } else if( strcmp( get_node_name( node ), "child" ) == 0 )    // only child nodes after chain of properties
         {
           attr = node->properties;
@@ -852,9 +850,8 @@ gchar *value = NULL;
 
 static void       
 parse_data( xmlNodePtr node, g2cWidget *widget )
-{
+{   /*  rows in a table definition  */
 xmlNodePtr child_node = NULL;
-//xmlAttrPtr attr = NULL;
 gchar *attr = NULL;
 GList *row = NULL;
 
@@ -1472,9 +1469,6 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
   
   /* Write widget_gui.c
    *    widget->klass_name
-   * #ifdef HAVE_CONFIG_H
-   * #  include <config.h>
-   * #endif
    *
    * #include <sys/types.h>
    * #include <sys/stat.h>
@@ -1525,11 +1519,7 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
 
   /* #include <stuff> */
 
-  fprintf( file,
-           "#ifdef HAVE_CONFIG_H\n"
-           "#  include <config.h>\n"
-           "#endif\n"
-           "\n"
+  fprintf( file,           
            "#include <sys/types.h>\n"
            "#include <sys/stat.h>\n"
            "#include <unistd.h>\n"
@@ -1636,7 +1626,7 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
     while (run != NULL) {
         widget = (g2cWidget *) run->data;      
         fprintf( file,
-                "\tgtk_window_add_accel_group (gui->%s, gui->%s);\n",
+                "\tgtk_window_add_accel_group (GTK_WINDOW(gui->%s), gui->%s);\n",
                             main_widget->name,
                             widget->name);            
         run = run->next;
@@ -1744,7 +1734,9 @@ output_widget_h( g2cWidget *main_widget, g2cDoc *doc )
   gchar *type_name  = NULL;
   gchar *dialogue_type_name  = NULL;
   g2cWidget *widget = NULL;
+  g2cWidget *dialog_widget = NULL;
   GList *run        = NULL;  
+  GList *model_run  = NULL;
   
 /* Get the transformed names for the widget */
   gui_name  = g2c_transform_name( main_widget->name, NT_GUI );
@@ -1796,6 +1788,33 @@ output_widget_h( g2cWidget *main_widget, g2cDoc *doc )
       widget = (g2cWidget *) run->data;    
       fprintf( file, "#include \"%s_gui.h\"\n", widget->name );
       run = g_list_next(run);
+  }
+  fprintf( file, "\n" );
+  // Output column enumerations for liststores
+  
+  run = main_widget->associates;
+  while (run != NULL) {
+        widget = (g2cWidget *) run->data;
+      	if ((strcmp(widget->klass_name, "GtkListStore") == 0) ||
+            (strcmp(widget->klass_name, "GtkTreeStore") == 0))   {
+		output_model_enum(widget, file);
+	}
+        run = run->next;
+  }
+  //   and for any stores in dialogues
+  run = g_list_first(doc->project->dialogue_widgets);
+  while (run != NULL) {
+    widget = (g2cWidget *) run->data; 
+    model_run = widget->associates;
+    while (model_run != NULL) {
+      dialog_widget = (g2cWidget *) model_run->data;
+      if ((strcmp(dialog_widget->klass_name, "GtkListStore") == 0) ||
+          (strcmp(dialog_widget->klass_name, "GtkTreeStore") == 0))   {
+		output_model_enum(dialog_widget, file);
+	}
+      model_run = g_list_next(model_run);
+    }
+    run = g_list_next(run);
   }
   
   fprintf( file, "\n" );
@@ -1947,13 +1966,11 @@ g2cWidget *widget = NULL;
     	run = g_list_next(run);
     }
     control_file_name = g_strconcat( DIR_PREFIX, "/",  "control.c", NULL );
-    //if( file_exists( control_file_name) ) {   
-        fprintf( file, "\t\t\tcontrol.c\n" );
-    //}
+    fprintf( file, "\t\t\tcontrol.c\n" );
     model_file_name = g_strconcat( DIR_PREFIX, "/",  "model.c", NULL ); 
     if( file_exists( model_file_name ) ) {    
         fprintf( file, "\t\t\tmodel.c\n" );
-    }    
+    }  
     fprintf( file, "\t\t\t)\n" );
     
     fprintf( file, "add_library(lib1 OBJECT ${SOURCES} )\n");
@@ -2262,7 +2279,7 @@ gboolean pixbuffirst = TRUE;
                   g_print("  Populater '%s' is new. Included in generated file.\n", populater);
               }
         }
-          output_model_enum(widget, file);
+          //output_model_enum(widget, file);
           fprintf( file,"\n\n");
           fprintf( file, "void populate_%s(%sGui *gui,\n\t\t GtkTreeModel*\t liststore)\n",                  
                   widget->name,
@@ -2458,14 +2475,14 @@ output_widget_create( g2cWidget *widget,
                         widget->parent->name,
                         widget->name);
               }
-              else if ( strcmp( widget->klass_name, "GtkEntry" ) == 0 ) {                      
-                      if (( widget->parent->parent != NULL) && 
-                          ( strcmp( widget->parent->parent->klass_name, "GtkSearchBar" ) == 0 ) )  {
+              else if ( ( strcmp( widget->klass_name, "GtkEntry" ) == 0 )  &&                     
+                        ( widget->parent->parent != NULL) && 
+                        ( strcmp( widget->parent->parent->klass_name, "GtkSearchBar" ) == 0 ) )  {
                             fprintf( file,
                               "\tgtk_search_bar_connect_entry(GTK_SEARCH_BAR(gui->%s), GTK_ENTRY(gui->%s));\n",
                               widget->parent->parent->name,
                               widget->name);
-                      }
+                      
               }
               else if( g_type_is_a( widget->parent->klass, GTK_TYPE_FRAME ) ) {
                   if ( strcmp( widget->klass_name, "GtkLabel" ) == 0  ) {
@@ -3325,11 +3342,6 @@ output_main_file ( g2cDoc *doc, gchar *file_name )
   
   /*  Output the main program file project_main.c
    *    
-   * #ifdef HAVE_CONFIG_H
-   * #  include <config.h>
-   * #endif
-   *
-   *
    * #include <gtk/gtk.h>
    *
    * #include "widget.h"

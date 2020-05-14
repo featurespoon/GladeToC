@@ -172,6 +172,9 @@ void
 register_add(g2cWidget *main, gchar* name, g2cWidget *widget);
 
 void
+register_free(g2cRegister *reg);
+
+void
 requires_add(g2cWidget *main, g2cWidget *widget, gchar *requires, gchar *required);
 
 g2cRequires *
