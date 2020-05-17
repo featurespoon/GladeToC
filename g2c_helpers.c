@@ -907,6 +907,7 @@ void allocate(g2cWidget *global, g2cWidget *widget, g2cWidget *orphan)
                 (strcmp(orphan->klass_name, "GtkTreeModelSort") == 0)  || 
                 (strcmp(orphan->klass_name, "GtkAdjustment") == 0) ||
                 (strcmp(orphan->klass_name, "GtkTextBuffer") == 0) ||
+                (strcmp(orphan->klass_name, "GtkTextTagTable") == 0) ||
                 (strcmp(orphan->klass_name, "GtkEntryBuffer") == 0) ||
                 (strcmp(orphan->klass_name, "GtkImage") == 0) ||
                 (strcmp(orphan->klass_name, "GtkRecentFilter") == 0) ||
@@ -1412,12 +1413,12 @@ g2cWidget *child;
           widget_list = g_list_next( widget_list );
     }
     
-//    widget_list = g_list_first( widget->associates );    
-//    while ( NULL != widget_list )   {         
-//          child = (g2cWidget *) widget_list->data;
-//          scan_widgets_for_register(global, main, child);
-//          widget_list = g_list_next( widget_list );
-//    }
+    widget_list = g_list_first( widget->associates );    
+    while ( NULL != widget_list )   {         
+          child = (g2cWidget *) widget_list->data;
+          scan_widgets_for_register(global, main, child);
+          widget_list = g_list_next( widget_list );
+    }
     
 //    widget_list = g_list_first( widget->accel_widgets );    
 //    while ( NULL != widget_list )   {         
@@ -1601,6 +1602,10 @@ g2cProp *prop;
       if (strcmp(prop->key,"child_model") == 0) {      
          requires_add(global, main, widget->name, prop->value);
          g_message("child_model property found for %s\n", widget->klass_name );
+      }
+      if (strcmp(prop->key,"tag_table") == 0) {      
+         requires_add(global, main, widget->name, prop->value);
+         g_message("tag_table property found for %s\n", widget->klass_name );
       }
       item = item->next;
   }   /*  end while  */

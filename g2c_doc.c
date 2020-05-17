@@ -250,6 +250,7 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkTreeStore") == 0)  ||          
           (strcmp(widget->klass_name, "GtkAdjustment") == 0) ||
           (strcmp(widget->klass_name, "GtkTextBuffer") == 0) ||
+          (strcmp(widget->klass_name, "GtkTextTagTable") == 0) ||
           (strcmp(widget->klass_name, "GtkEntryBuffer") == 0) ||
           (strcmp(widget->klass_name, "GtkImage") == 0) ||
           (strcmp(widget->klass_name, "GtkRecentFilter") == 0) ||
@@ -2524,6 +2525,14 @@ output_widget_create( g2cWidget *widget,
                         widget->parent->parent->name,
                         widget->name);
               }
+              else if ( ( strcmp( widget->klass_name, "GtkTextTag" ) == 0 ) &&
+                        ( strcmp( widget->parent->klass_name, "GtkTextTagTable" ) == 0 ) ) {
+                      fprintf( file,
+                          "\tgtk_text_tag_table_add(GTK_TEXT_TAG_TABLE(gui->%s),\n"
+                          "\t\t\tGTK_TEXT_TAG(gui->%s));\n",
+                          widget->parent->name,
+                          widget->name);
+              }
               /* Pack the widget, if necessary */
              else if( !widget->klass || !widget->parent->klass ) {
                 g_message( "%s:%d, %s:%d\n",
@@ -2813,7 +2822,7 @@ output_temp_declarations( g2cWidget *widget, FILE *file )
   g_assert( NULL != file );
   
   if (widget->parent == NULL) {
-    g2c_widget_create_temp_declaration_cb( (gpointer) widget, NULL);
+    g2c_widget_create_temp_declaration_cb( (gpointer) widget, (gpointer) NULL);
   }
 
   g_list_foreach( (gpointer) widget->children,
@@ -2824,8 +2833,11 @@ output_temp_declarations( g2cWidget *widget, FILE *file )
                   (GFunc   ) g2c_widget_create_temp_declaration_cb,
                   (gpointer) NULL );
 
-  /* These only appear in top-level widgets, so no recursion is necessary */
   g_list_foreach( (gpointer) widget->children,
+                  (GFunc)    output_temp_declarations,
+                  (gpointer) file );
+  
+  g_list_foreach( (gpointer) widget->associates,
                   (GFunc)    output_temp_declarations,
                   (gpointer) file );
 }
