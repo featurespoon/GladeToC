@@ -763,6 +763,24 @@ g2cWidget *member = NULL;
     return FALSE;
 }
 
+gboolean is_widget_top_level(g2cWidget *global, g2cWidget *widget) 
+{
+GList *run = NULL;
+g2cWidget *dialog = NULL;
+
+    if ( strcmp( global->name, widget->name ) == 0 )
+        return TRUE;
+    run = g_list_first(CURRENT_PROJECT->dialogue_widgets);
+    while (run != NULL) {
+        dialog = (g2cWidget *) run->data;
+        if ( strcmp( dialog->name, widget->name ) == 0 )
+            return TRUE;
+        run = g_list_next(run);
+    }
+    return FALSE;                  
+}
+
+
 void
 register_add(g2cWidget *main, gchar* name, g2cWidget *widget)
 {
@@ -914,6 +932,8 @@ void allocate(g2cWidget *global, g2cWidget *widget, g2cWidget *orphan)
                 (strcmp(orphan->klass_name, "GtkRecentManager") == 0) ||
                 (strcmp(orphan->klass_name, "GtkEntryCompletion") == 0) ||
                 (strcmp(orphan->klass_name, "GtkStack") == 0) ||
+                (strcmp(orphan->klass_name, "GtkSizeGroup") == 0) ||
+                (strcmp(orphan->klass_name, "GtkWindowGroup") == 0) ||
                 (strcmp(orphan->klass_name, "GtkFileFilter") == 0) ||
                 (strcmp(orphan->klass_name, "GtkLabel") == 0) ) {
         widget->associates = g_list_append( widget->associates, orphan);
@@ -922,6 +942,29 @@ void allocate(g2cWidget *global, g2cWidget *widget, g2cWidget *orphan)
     }
     register_add(widget, orphan->name, orphan);  
     allocate_children(global, widget, orphan);
+}
+
+gboolean is_widget_allocated(g2cWidget *global, g2cWidget *widget)
+{
+GList *run = NULL;
+g2cWidget *dialog = NULL;
+
+    if (  (is_in_widget_list(global->accel_widgets, widget->name) ) ||
+          (is_in_widget_list(global->popups, widget->name) ) ||
+          (is_in_widget_list(global->associates, widget->name) ) ) {
+        return TRUE;
+    }
+    run = g_list_first(CURRENT_PROJECT->dialogue_widgets);
+    while (run != NULL) {
+            dialog = (g2cWidget *) run->data;
+            if (  (is_in_widget_list(dialog->accel_widgets, widget->name) ) ||
+                  (is_in_widget_list(dialog->popups, widget->name) ) ||
+                  (is_in_widget_list(dialog->associates, widget->name) ) ) {
+                return TRUE;
+            }      
+            run = g_list_next(run);
+    }
+    return FALSE;
 }
 
 /*  Go through the associates one by one and look for a requirement in the
@@ -944,12 +987,15 @@ gboolean allocated = FALSE;
         allocated = FALSE;
         while (lreq != NULL) {
             req = (g2cRequires *) lreq->data;
-            if (strcmp(orphan->name, req->required) == 0) {
+            if (strcmp(orphan->name, req->required) == 0)  {
                 main = req->main;
-                allocate(global, main, orphan);
-                //g_message("Allocated %s to %s\n", orphan->name, main->name);  
-                allocated = TRUE;
-                break;
+                //  is main allocated or global or in the dialog_widgets? If not, skip
+                if ( (is_widget_top_level(global, main)  == TRUE)  ||
+                     (is_widget_allocated(global, main)  == TRUE) ) {
+                    allocate(global, main, orphan);                     
+                    allocated = TRUE;
+                    break;
+                }
             }
             lreq = g_list_next( lreq );    
         }
@@ -987,7 +1033,7 @@ g2cWidget *popup_widget;
     
     popup_item = g_list_first(main->popups);
     while (popup_item != NULL) {
-        popup_widget = (g2cWidget *) popup_item->data;
+        popup_widget = (g2cWidget *) popup_item->data;        
         reg = find_widget_by_name( main->regster, popup_widget->name );
         reg->level = 1;
         popup_item = g_list_next( popup_item );
@@ -1404,16 +1450,16 @@ g2cWidget *child;
     register_add(main, widget->name, widget);
     scan_properties_for_requires(global, main, widget);
     scan_packing_for_requires(global, main, widget);
-
+    
     widget_list = g_list_first( widget->children );    
     while ( NULL != widget_list )   {         
           child = (g2cWidget *) widget_list->data;
           /*  recurse down  */
-          scan_widgets_for_register(global, main, child);          
+          scan_widgets_for_register(global, main, child);           
           widget_list = g_list_next( widget_list );
     }
     
-    widget_list = g_list_first( widget->associates );    
+    widget_list = g_list_first( widget->associates ); 
     while ( NULL != widget_list )   {         
           child = (g2cWidget *) widget_list->data;
           scan_widgets_for_register(global, main, child);
@@ -1423,17 +1469,43 @@ g2cWidget *child;
 //    widget_list = g_list_first( widget->accel_widgets );    
 //    while ( NULL != widget_list )   {         
 //          child = (g2cWidget *) widget_list->data;
-//          scan_widgets_for_register(main, child);
+//          scan_widgets_for_register(global, main, child);
 //          widget_list = g_list_next( widget_list );
 //    }
 //    
 //    widget_list = g_list_first( widget->popups );    
 //    while ( NULL != widget_list )   {         
 //          child = (g2cWidget *) widget_list->data;
-//          scan_widgets_for_register(main, child);
+//          scan_widgets_for_register(global, main, child);
 //          widget_list = g_list_next( widget_list );
 //    }
     //check_requires(main);
+}
+
+void
+scan_orphans_for_register(g2cWidget *global, GList *orphans)
+{
+GList *orphan_list;
+g2cWidget *orphan;
+GList *widget_list;
+g2cWidget *child;
+
+    orphan_list = g_list_first( orphans ); 
+    while (orphan_list != NULL) {
+        orphan = (g2cWidget *) orphan_list->data;
+        //register_add(global, global->name, orphan);
+        scan_properties_for_requires(global, global, orphan);
+        scan_sizegroup_for_requires(global, global, orphan);
+        orphan_list = g_list_next(orphan_list);
+        
+        widget_list = g_list_first( orphan->children );    
+        while ( NULL != widget_list )   {         
+              child = (g2cWidget *) widget_list->data;
+              /*  recurse down  */
+              scan_widgets_for_register(global, orphan, child);           
+              widget_list = g_list_next( widget_list );
+        }
+    } 
 }
 
 void 
@@ -1446,6 +1518,21 @@ scan_packing_for_requires(g2cWidget *global, g2cWidget *main, g2cWidget *widget)
         requires_add(global, main, widget->name, widget->parent->name);
     }
     return;
+}
+
+void
+scan_sizegroup_for_requires(g2cWidget *global, g2cWidget *main, g2cWidget *widget)
+{
+GList * item = NULL;
+gchar *member = NULL;
+
+    if ( widget->sizegroup == NULL) return;
+    item = g_list_first(widget->sizegroup);
+    while (item != NULL) {
+        member = (gchar *) item->data;        
+        requires_add(global, main, widget->name, member);
+        item = item->next;
+    }   /*  end while  */
 }
 
 void

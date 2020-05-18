@@ -165,6 +165,9 @@ icon_size_enum(gchar *size);
 gboolean
 is_in_widget_list(GList *list, gchar *name);
 
+gboolean 
+is_widget_top_level(g2cWidget *global, g2cWidget *widget);
+
 void 
 row_add(g2cWidget *widget, GList *row);
 
@@ -198,6 +201,12 @@ scan_properties_for_requires(g2cWidget *global, g2cWidget *main, g2cWidget *widg
 void 
 scan_packing_for_requires(g2cWidget *global, g2cWidget *main, g2cWidget *widget);
 
+void
+scan_sizegroup_for_requires(g2cWidget *global, g2cWidget *main, g2cWidget *widget);
+
+void
+scan_orphans_for_register(g2cWidget *global, GList *orphans);
+
 g2cRegister *
 find_widget_by_name(GList *register_list, gchar* name);
 
@@ -209,6 +218,9 @@ allocate(g2cWidget *global, g2cWidget *widget, g2cWidget *orphan);
 
 void 
 allocate_orphans(g2cWidget *main, GList *orphans);
+
+gboolean 
+is_widget_allocated(g2cWidget *global, g2cWidget *widget);
 
 void
 analyse_requirements(g2cWidget *global, g2cWidget *main);

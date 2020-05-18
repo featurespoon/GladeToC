@@ -119,6 +119,7 @@ typedef struct tag_g2cWidget
     guint                 order;
     gchar                *child_name;
     gboolean              internal;
+    GList                *sizegroup;
     GList                *regster;
     GList                *requires;
   }

@@ -35,6 +35,7 @@ static void       parse_mime_types( xmlNodePtr node, g2cWidget *widget );
 static void       parse_attributes( xmlNodePtr node, g2cWidget *widget );
 static void       parse_data( xmlNodePtr node, g2cWidget *widget );
 static void       parse_rows( xmlNodePtr node, GList **rows );
+static void       parse_sizegroup( xmlNodePtr node, g2cWidget *widget );
 static gchar     *get_dir_prefix( g2cDoc *doc );
 
 static void       init_types( g2cDoc *doc );
@@ -57,6 +58,7 @@ static void       output_focus_accelerator_declarations( g2cWidget *widget, FILE
 static void       output_accelerators( g2cWidget *widget, FILE *file );
 static void       output_combobox_items ( g2cWidget *widget, FILE* file );
 static void       output_patterns ( g2cWidget *widget, FILE* file );
+static void       output_sizegroup ( g2cWidget *widget, FILE* file );
 static void       output_mime_types ( g2cWidget *widget, FILE *file );
 static void       output_attributes ( g2cWidget *widget, FILE* file );
 static void       output_pango_attribute( g2cWidget *widget, gchar* name, gchar* value, FILE* file );
@@ -263,6 +265,8 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkLabel") == 0) ||
           (strcmp(widget->klass_name, "GtkAccelGroup") == 0) ||
           (strcmp(widget->klass_name, "GtkMenu") == 0) ||
+          (strcmp(widget->klass_name, "GtkSizeGroup") == 0) ||
+          (strcmp(widget->klass_name, "GtkWindowGroup") == 0) ||
           (strcmp(widget->klass_name, "GtkPopover") == 0)  ||
           (strcmp(widget->klass_name, "GtkPopoverMenu") == 0) ) {
           orphans = g_list_append(orphans, widget);
@@ -295,6 +299,7 @@ g2c_doc_output( g2cDoc *doc )
   /*         Note: the global requires list is only set up under the top_level window   */
   
   scan_widgets_for_register(doc->project->main_widget, doc->project->main_widget, doc->project->main_widget);
+  scan_orphans_for_register(doc->project->main_widget, orphans);
 
   run = g_list_first(doc->project->dialogue_widgets);
   while (run != NULL) {
@@ -315,6 +320,7 @@ g2c_doc_output( g2cDoc *doc )
   
   analyse_requirements(doc->project->main_widget, doc->project->main_widget); 
   //print_out_register(doc->project->main_widget);
+ 
   
   
   run = g_list_first(doc->project->dialogue_widgets);
@@ -753,6 +759,10 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
         { 
           parse_data( node, widget );   // process chain of rows of liststore data to the end              
         }
+      else if( strcmp( get_node_name( node ), "widgets" ) == 0 )
+        { 
+          parse_sizegroup( node, widget );   // process chain of rows of widgets in sizegroup to the end 
+        }
       
       node = get_next_node(node);       
       if( node == NULL )  break;  // POP because no more property or child nodes
@@ -927,6 +937,33 @@ GList   *mime_types = NULL;
           child_node = get_next_node(child_node);          
      }
      widget->mime_types = mime_types ;     
+  
+}
+
+static void       
+parse_sizegroup( xmlNodePtr node, g2cWidget *widget )
+{
+xmlNodePtr child_node = NULL;
+xmlAttr   *attr        = NULL;
+gchar   *data   = NULL;
+GList   *sizegroup = NULL;
+    
+     g_assert ( strcmp( widget->klass_name, "GtkSizeGroup" ) == 0 );
+       
+     child_node = get_first_child(node); 
+     while (child_node != NULL) {       
+                     
+          g_assert( strcmp( get_node_name( child_node ), "widget" ) == 0 ); 
+          attr = child_node->properties;
+          
+          g_assert( strcmp( get_attr_node_name( attr ), "name" ) == 0 );
+          data = g_strdup( get_attr_node_text( attr ) ); 
+           
+          sizegroup = g_list_append(sizegroup, data );           
+         /*  step to next widget  */
+          child_node = get_next_node(child_node);          
+     }
+     widget->sizegroup = sizegroup;
   
 }
 
@@ -2788,14 +2825,18 @@ output_widget_create( g2cWidget *widget,
       output_attributes ( widget, file );
   }
   
+  if ((strcmp( widget->klass_name, "GtkSizeGroup" ) == 0 ) &&
+          (widget->sizegroup != NULL)) {
+      output_sizegroup ( widget, file );
+  }
   
     /* This provides a way to get the owning class from this widget */
     
-      if (widget->internal == FALSE) {
-         fprintf( file,
-               "\tg_object_set_data (G_OBJECT (gui->%s), \"owner\", owner);\n\n",
-               widget->name );
-      }
+    if (widget->internal == FALSE) {
+       fprintf( file,
+             "\tg_object_set_data (G_OBJECT (gui->%s), \"owner\", owner);\n\n",
+             widget->name );
+    }
      
       /* Recursively handle the children of this widget */
 //      children = g_list_first( widget->children );
@@ -3131,6 +3172,24 @@ g2cAttribute *attribute = NULL;
             widget->name, widget->name);
     fprintf( file,
                  "\tpango_attr_list_unref(%s_attrlist);\n", widget->name);	
+}
+
+void 
+output_sizegroup( g2cWidget *widget, FILE* file )
+{
+GList *run = NULL; 
+gchar *member = NULL;
+
+    g_assert( NULL != widget );
+    
+    run = g_list_first( widget->sizegroup );
+    while ( NULL != run )   {
+         member = (gchar *) run->data;
+         fprintf( file,
+             "\tgtk_size_group_add_widget (GTK_SIZE_GROUP (gui->%s), GTK_WIDGET(gui->%s));\n",
+                 widget->name, member);
+         run = g_list_next( run );
+    }    
 }
 
 void

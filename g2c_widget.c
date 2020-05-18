@@ -63,6 +63,7 @@ void infobar_message_type( g2cWidget *widget );
 void label_label_justify( g2cWidget *widget );
 void label_label_align( g2cWidget *widget );
 void label_label_ellipsize ( g2cWidget *widget );
+void label_label_wrap ( g2cWidget *widget );
 void label_use_markup( g2cWidget *widget ); 
 void label_ellipsize ( g2cWidget *widget );
 void layout_height ( g2cWidget *widget );
@@ -139,6 +140,7 @@ void create_gtk_scale_button( g2cWidget *widget );
 void create_gtk_scrollbar( g2cWidget *widget );
 void create_gtk_scrolled_window( g2cWidget *widget );
 void create_gtk_separator ( g2cWidget *widget );
+void create_gtk_sizegroup ( g2cWidget *widget );
 void create_gtk_spin_button( g2cWidget *widget );
 void create_gtk_text_buffer( g2cWidget *widget );
 void create_gtk_tree_selection( g2cWidget *widget );
@@ -353,6 +355,10 @@ static g2cCreateFunction create_functions[] =
       { NULL },
       create_gtk_separator },
       
+    { "GtkSizeGroup", NULL,
+      { NULL },
+      create_gtk_sizegroup },  
+      
     { "GtkSpinButton", NULL,
       { NULL },
       create_gtk_spin_button },
@@ -530,7 +536,8 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkLabel", "_page_complete" },
     { "GtkLabel", "_page_title" },
     { "GtkLabel", "_page_type" },
-	{ "GtkLabel", "use_underline" },
+    { "GtkLabel", "use_underline" },
+    { "GtkLabel", "label" },
     { "GtkLinkButton", "uri" },
     { "GtkLinkButton", "label" },
     { "GtkMenuBar", "shadow_type"},  // deprecated
@@ -576,6 +583,7 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkScrolledWindow", "can_focus"},
     { "GtkSearchEntry", "shadow_type"},   // deprecated
     { "GtkSeparator", "can_focus" },
+    { "GtkSizeGroup", "mode" },  /* in create_gtk_sizegroup  */
     { "GtkSpinButton", "value" },
 //    { "GtkSpinButton", "lower" },
 //    { "GtkSpinButton", "upper" },
@@ -662,11 +670,7 @@ static g2cSpecialHandler special_handlers[] =
     {"name", "accel_widget", NULL },
       NULL,
       NULL },
-//    { "GtkAboutDialog", "transient_for",
-//         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
-//      { "name", "transient_for", NULL },
-//         NULL,
-//         NULL },
+
     { "GtkAboutDialog", "authors",
       NULL,
     { NULL },
@@ -1145,13 +1149,7 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "active", NULL, NULL, NULL },
       "active",
       NULL },
-      
-//     { "GtkColorChooserDialog", "transient_for",
-//         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
-//      { "name", "transient_for", NULL },
-//         NULL,
-//         NULL },
-      
+           
       { "GtkColorChooserDialog", "rgba",
          NULL,
       {  NULL },
@@ -1188,7 +1186,7 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },
       
-     { "GtkDialog", "transient_for",
+     { "GtkDialog", "transient_for",   /* also applies to child dialog classes */
          NULL,
       {  NULL },
          NULL,
@@ -1386,12 +1384,6 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },
       
-//    { "GtkFontChooserDialog", "transient_for",
-//         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
-//      { "name", "transient_for", NULL },
-//         NULL,
-//         NULL },
-      
     { "GtkFrame", "label_xalign",  
        NULL, 
       {NULL},
@@ -1532,12 +1524,36 @@ static g2cSpecialHandler special_handlers[] =
       { NULL },
       NULL,
       label_label_ellipsize },
-
+      
+    { "GtkLabel", "single_line_mode",   /*  applies to GtkAccelLabel as well  */
+      "\tgtk_label_set_single_line_mode(GTK_LABEL(gui->%s), %s);\n",
+      { "name", "single_line_mode", NULL },
+      NULL,
+      NULL },  
+      
+    { "GtkLabel", "max_width_chars",
+      "\tgtk_label_set_max_width_chars(GTK_LABEL(gui->%s), %s);\n",
+      { "name", "max_width_chars", NULL },
+      NULL,
+      NULL },
+      
+     { "GtkLabel", "width_chars",
+      "\tgtk_label_set_width_chars(GTK_LABEL(gui->%s), %s);\n",
+      { "name", "width_chars", NULL },
+      NULL,
+      NULL },  
+      
      { "GtkLabel", "use_markup",
       NULL,
       { NULL },
       NULL,
-      label_use_markup },  
+      label_use_markup }, 
+      
+    { "GtkLabel", "wrap_mode",
+       NULL,
+       {  NULL },
+       NULL,
+       label_label_wrap},     
 	  
     { "GtkLayout", "width",
       NULL,
@@ -2036,13 +2052,7 @@ static g2cSpecialHandler special_handlers[] =
       { NULL },
          NULL,
          message_dialog_secondary_text },
-      
-//    { "GtkMessageDialog", "transient_for",
-//         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((Window1 *) owner)->gui->%s));\n",
-//      { "name", "transient_for", NULL },
-//         NULL,
-//         NULL },
-//      
+         
     { "GtkNotebook", "enable_popup",
       "\tgtk_notebook_popup_enable (gui->%s);\n",
     { "name", NULL},
@@ -2144,12 +2154,6 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "round_digits", NULL },
       NULL,
       NULL },    
-      
-//    { "GtkRecentChooserDialog", "transient_for",
-//         "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(gui->%s));\n",
-//      { "name", "transient_for", NULL },
-//         NULL,
-//         NULL },
       
     { "GtkRecentChooserDialog", "limit",
          "\tgtk_recent_chooser_set_limit (GTK_RECENT_CHOOSER(gui->%s), %s);\n",
@@ -2659,7 +2663,7 @@ static g2cCommonParam common_params[] =
     {"font",FALSE,"char",NULL},
     {"max_width_chars",FALSE,"int",NULL},
     {"width_chars",FALSE,"int",NULL},
-    {"wrap_mode",FALSE,"PANGO_WRAP",NULL},
+//    {"wrap_mode",FALSE,"PANGO_WRAP",NULL},
     {"wrap_width",FALSE,"int",NULL},
     {"single_paragraph_mode", FALSE,NULL, NULL},
     {"family", FALSE, "char",NULL},
@@ -2746,7 +2750,6 @@ static g2cCommonParam common_params[] =
     {"content_type", FALSE, NULL, NULL},
     {"left_padding", FALSE, NULL, NULL},
     {"justification", FALSE, "GTK_JUSTIFY", "GtkTextView" },
-    {"wrap_mode", FALSE, "GTK_WRAP", "GtkTextView" },
     {"header_relief", FALSE, "GTK_RELIEF", "GtkToolItemGroup" },
     {"orientation", FALSE, "GTK_ORIENTATION", "GtkOrientable" },
     {"use_fallback", FALSE,  NULL, NULL},
@@ -3582,6 +3585,20 @@ gboolean underline = FALSE;
     }
     //  This function will set the “use-markup” property to True as a side effect.
     g_free( label );
+}
+
+void label_label_wrap ( g2cWidget *widget )
+{
+gchar *wrap_mode = NULL;
+gchar *wrap_enum = NULL;
+ 
+    wrap_mode = g2c_widget_get_property( widget, "wrap_mode" );
+    wrap_enum = make_enumeral( "PANGO_WRAP", wrap_mode );
+    fprintf( CURRENT_FILE,
+            "\tgtk_label_set_line_wrap_mode(GTK_LABEL(gui->%s), %s);\n",
+             widget->name,
+             wrap_enum);
+    g_free( wrap_enum );    
 }
 
 void 
@@ -5168,7 +5185,7 @@ gchar *title = NULL;
        if (action == NULL) {
           enumaction = g_strdup( "GTK_FILE_CHOOSER_ACTION_OPEN" );
        } else {
-          enumaction = g_strconcat ("GTK_FILE_CHOOSER_ACTION_", g_utf8_strup (action, strlen(action)), NULL);
+          enumaction = make_enumeral ( "GTK_FILE_CHOOSER_ACTION", action );
        }
        title = g2c_widget_get_property( widget, "title" );
        if (title == NULL) {
@@ -5230,12 +5247,10 @@ gchar *title = NULL;
    if ( NULL != widget->parent )
    {
        init_action = g2c_widget_get_property( widget, "action" );
-       if (init_action != NULL) 
-           action = g_strdelimit( init_action, ":-", '_' );
        if (action == NULL) {
           enumaction = g_strdup( "GTK_FILE_CHOOSER_ACTION_OPEN" );
        } else {
-          enumaction = g_strconcat ("GTK_FILE_CHOOSER_ACTION_", g_utf8_strup (action, strlen(action)), NULL);
+          enumaction = make_enumeral ("GTK_FILE_CHOOSER_ACTION", action);
        }
        title = g2c_widget_get_property( widget, "title" );
        if (title == NULL) {
@@ -5303,14 +5318,14 @@ gchar *markup = NULL;
    message = g2c_widget_get_property( widget, "text" );
    markup = g2c_widget_get_property( widget, "use_markup" );
    if (buttons != NULL) {
-       full_buttons = g_strconcat( "GTK_BUTTONS_", g_strdelimit(g_utf8_strup (buttons, strlen(buttons)),":-", '_' ), NULL);
+       full_buttons = make_enumeral( "GTK_BUTTONS", buttons );
    } else {
-       full_buttons = g_strdup("GTK_BUTTONS_NONE");
+       full_buttons = g_strdup( "GTK_BUTTONS_NONE" );
    }
    if (type != NULL) {
-       full_type = g_strconcat( "GTK_MESSAGE_", g_strdelimit(g_utf8_strup (type, strlen(type)),":-", '_' ), NULL);
+       full_type = make_enumeral( "GTK_MESSAGE", type );
    } else {
-       full_type = g_strdup("GTK_MESSAGE_INFO");
+       full_type = g_strdup( "GTK_MESSAGE_INFO" );
    }
    if (markup == NULL) {
        fprintf( CURRENT_FILE,
@@ -5794,6 +5809,25 @@ gchar *func_name = NULL;
  
 }
 
+void create_gtk_sizegroup ( g2cWidget *widget )
+{
+gchar *group_mode = NULL;
+gchar *mode_enum = NULL;
+     g_assert( NULL != widget );
+     group_mode =  g2c_widget_get_property( widget, "mode" ) ;     
+     if (group_mode == NULL) {
+         mode_enum = g_strdup("GTK_SIZE_GROUP_NONE");
+     } else {
+         mode_enum = make_enumeral("GTK_SIZE_GROUP", group_mode);
+     }
+     
+     fprintf( CURRENT_FILE,
+              "\tgui->%s = (GtkSizeGroup*) gtk_size_group_new (%s);\n",
+              widget->name,                       
+              mode_enum );
+     g_free( mode_enum );
+}
+
 void
 create_gtk_box( g2cWidget *widget )
 {                                   /* for GtkBox and GtkButtonBox  */  
@@ -6104,6 +6138,7 @@ g2c_widget_new( gchar *class_name )
   widget->packing.stack.needs_attention = FALSE;
   widget->packing.stack.position = 0;
   widget->packing.stack.title = NULL;
+  widget->sizegroup = NULL;
   widget->regster = NULL;
   widget->requires = NULL;
   
@@ -6295,6 +6330,8 @@ g2c_widget_new( gchar *class_name )
       else if ( strcmp( widget->klass_name, "GtkIconView" ) == 0 ) widget->klass = GTK_TYPE_ICON_VIEW;
       else if ( strcmp( widget->klass_name, "GtkFlowBox" ) == 0 ) widget->klass = GTK_TYPE_FLOW_BOX;
       else if ( strcmp( widget->klass_name, "GtkFlowBoxChild" ) == 0 ) widget->klass = GTK_TYPE_FLOW_BOX_CHILD;
+      else if ( strcmp( widget->klass_name, "GtkSizeGroup" ) == 0)     widget->klass = GTK_TYPE_SIZE_GROUP;
+      else if ( strcmp( widget->klass_name, "GtkWindowGroup" ) == 0)   widget->klass = GTK_TYPE_WINDOW_GROUP;
       else
         {
           g_message( "Unhandled class, %s, set to GtkWidget\n", widget->klass_name );
@@ -6433,6 +6470,17 @@ gchar *text = NULL;
                       NULL );
 
       g_list_free( widget->attributes );
+    }
+  
+  if ( widget->sizegroup )
+    {
+       run = g_list_first(widget->sizegroup);
+       while (run != NULL) {
+            text = (gchar *) run->data;
+            g_free( text );
+            run = g_list_next( run ); 
+       }
+       g_list_free( widget->sizegroup );
     }
   
   if ( widget->regster )
