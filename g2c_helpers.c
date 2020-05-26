@@ -69,6 +69,26 @@ xmlNodePtr next_node;
     return next_node;
 }
 
+xmlNode  * set_first_object(xmlNode *root_element )
+{
+ xmlNode  *node = root_element;
+ 
+ /* root element name should be interface  */
+        
+    g_assert( strcmp(node->name,"interface") == 0 );
+    
+    node = get_first_child(node);      
+          
+    if (node->type == XML_COMMENT_NODE)   node = get_next_node(node);
+    
+    if ( strcmp(node->name,"requires") == 0 )  node = get_next_node(node);  /// glade 3.16.1 
+    
+    /* the node should now be an Element node with name object */  
+    g_assert( (node->type == XML_ELEMENT_NODE) && ( strcmp(node->name,"object") == 0 ));      
+    
+    return node;
+}
+
 const xmlChar *
 get_attr_node_text( xmlAttrPtr node )
 {
@@ -763,23 +783,39 @@ g2cWidget *member = NULL;
     return FALSE;
 }
 
-gboolean is_widget_top_level(g2cWidget *global, g2cWidget *widget) 
+gboolean is_widget_top_level(g2cWidget *global, gchar *name) 
 {
 GList *run = NULL;
 g2cWidget *dialog = NULL;
 
-    if ( strcmp( global->name, widget->name ) == 0 )
+    if ( strcmp( global->name, name ) == 0 )
         return TRUE;
     run = g_list_first(CURRENT_PROJECT->dialogue_widgets);
     while (run != NULL) {
         dialog = (g2cWidget *) run->data;
-        if ( strcmp( dialog->name, widget->name ) == 0 )
+        if ( strcmp( dialog->name, name ) == 0 ) {
             return TRUE;
+        }
         run = g_list_next(run);
     }
     return FALSE;                  
 }
 
+g2cWidget *get_dialog_widget_from_name(gchar *name)
+{
+GList *run;
+g2cWidget *dialog;
+
+    run = g_list_first(CURRENT_PROJECT->dialogue_widgets);
+    while (run != NULL) {
+        dialog = (g2cWidget *) run->data;
+        if (strcmp(dialog->name, name) == 0) {
+            return dialog;
+        }        
+        run = g_list_next(run);
+    }
+    return NULL;
+}
 
 void
 register_add(g2cWidget *main, gchar* name, g2cWidget *widget)
@@ -797,6 +833,79 @@ register_free(g2cRegister *reg)
 {
     g_free(reg->name);
     g_free(reg);
+}
+
+void 
+dialog_requires_add(GList **top_list, gchar *requiring, gchar *required)
+{
+g2cDialog_Requires *req = g_new0( g2cDialog_Requires, 1);
+    
+    req->requiring = g_strdup(requiring);
+    req->required = g_strdup(required);
+    *top_list = g_list_append(*top_list, (gpointer) req);
+    //g_message ("dialog %s requires %s \n", requiring, required);
+}
+
+void
+dialog_require_free(g2cDialog_Requires *require)
+{
+    g_free(require->requiring);
+    g_free(require->required);
+    g_free(require);
+    return;
+}
+
+void sort_top_list(GList **top_list)
+{
+g2cDialog_Requires *reqx, *reqy;
+GList *run, *x, *y;
+gpointer temp;
+gboolean bchange = FALSE;
+guint count =0;
+
+    x = g_list_first(*top_list);
+    do {
+        bchange = FALSE;
+        while (x != NULL) {
+            reqx = (g2cDialog_Requires *) x->data;
+            y = x; //   g_list_first(*top_list); 
+            y = g_list_next(y);
+            while (y != NULL) {
+                reqy = (g2cDialog_Requires *) y->data;
+                if (strcmp(reqy->requiring, reqx->required) == 0) {
+                   temp = x->data;
+                   x->data = y->data;
+                   y->data = temp;
+                   bchange = TRUE;
+                   g_message("Rearranged order of dialogue for %s\n", reqx->requiring);
+                }          
+                y = g_list_next(y);
+            }
+            x = g_list_next(x);
+        }
+        count++;
+        if (count > 10) {
+            g_message("dialog transient requirement iterations limit exceeded\n");
+            break;
+        }
+    } while (bchange == TRUE);
+
+}
+
+gboolean is_dialogue_in_top_list(GList *top_list, gchar *name)
+{
+GList *run;  
+g2cDialog_Requires *req;
+
+    run = g_list_first(top_list);
+    while (run != NULL)   {
+        req = (g2cDialog_Requires *) run->data;
+        if (strcmp(req->requiring, name) == 0) {
+            return TRUE;
+        }
+        run = g_list_next( run );
+    }
+    return FALSE;      
 }
 
 /* widget is top-level window or dialog  */
@@ -915,7 +1024,7 @@ void allocate(g2cWidget *global, g2cWidget *widget, g2cWidget *orphan)
 {
     if (strcmp(orphan->klass_name, "GtkAccelGroup") == 0) {
         widget->accel_widgets = g_list_append(widget->accel_widgets, orphan);
-    } else if ( (strcmp(orphan->klass_name, "GtkMenu") == 0) ||
+    } else if ( (strcmp(orphan->klass_name, "GtkMenu") == 0) ||                
                 (strcmp(orphan->klass_name, "GtkPopover") == 0)  ||
                 (strcmp(orphan->klass_name, "GtkPopoverMenu") == 0) )  {
         widget->popups = g_list_append(widget->popups, orphan);
@@ -935,7 +1044,8 @@ void allocate(g2cWidget *global, g2cWidget *widget, g2cWidget *orphan)
                 (strcmp(orphan->klass_name, "GtkSizeGroup") == 0) ||
                 (strcmp(orphan->klass_name, "GtkWindowGroup") == 0) ||
                 (strcmp(orphan->klass_name, "GtkFileFilter") == 0) ||
-                (strcmp(orphan->klass_name, "GtkLabel") == 0) ) {
+                (strcmp(orphan->klass_name, "GtkLabel") == 0) ||
+                (strcmp(orphan->klass_name, "GtkStatusIcon") == 0) ) {
         widget->associates = g_list_append( widget->associates, orphan);
     } else {
         g_message("Unexpected orphan widget klass %s in allocation\n", orphan->klass_name);
@@ -990,7 +1100,7 @@ gboolean allocated = FALSE;
             if (strcmp(orphan->name, req->required) == 0)  {
                 main = req->main;
                 //  is main allocated or global or in the dialog_widgets? If not, skip
-                if ( (is_widget_top_level(global, main)  == TRUE)  ||
+                if ( (is_widget_top_level(global, main->name)  == TRUE)  ||
                      (is_widget_allocated(global, main)  == TRUE) ) {
                     allocate(global, main, orphan);                     
                     allocated = TRUE;

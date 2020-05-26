@@ -61,6 +61,7 @@ const xmlChar *get_attr_node_name( xmlAttrPtr node );
 const xmlChar *get_attr_node_text( xmlAttrPtr node );
 const xmlNodePtr get_next_node( xmlNodePtr node );
 const xmlNodePtr get_first_child( xmlNodePtr node );
+xmlNode  * set_first_object(xmlNode *root_element );
 
 gchar *g2c_stringify( const gchar *pstr );
 
@@ -166,7 +167,10 @@ gboolean
 is_in_widget_list(GList *list, gchar *name);
 
 gboolean 
-is_widget_top_level(g2cWidget *global, g2cWidget *widget);
+is_widget_top_level(g2cWidget *global, gchar *name);
+
+g2cWidget *
+get_dialog_widget_from_name(gchar *name);
 
 void 
 row_add(g2cWidget *widget, GList *row);
@@ -191,6 +195,18 @@ require_free(g2cRequires *require);
 
 void 
 free_requires(gpointer data);
+
+void 
+dialog_requires_add(GList **top_list, gchar *requiring, gchar *required);
+
+void
+dialog_require_free(g2cDialog_Requires *require);
+
+void 
+sort_top_list(GList **top_list);
+
+gboolean 
+is_dialogue_in_top_list(GList *top_list, gchar *name);
 
 void
 scan_widgets_for_register(g2cWidget *global, g2cWidget *main, g2cWidget *widget);

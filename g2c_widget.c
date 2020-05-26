@@ -84,6 +84,8 @@ void paragraph_background_rgb( g2cWidget *widget );
 void popover_submenu( g2cWidget *widget );
 void range_lower_sensitivity( g2cWidget *widget );
 void range_upper_sensitivity( g2cWidget *widget );
+void recent_chooser_sort_type( g2cWidget *widget );
+void recent_manager_filename( g2cWidget *widget );
 void scale_value_pos( g2cWidget *widget );
 void scale_button_icons ( g2cWidget *widget ); 
 void scrolled_window_placement ( g2cWidget *widget );
@@ -223,6 +225,10 @@ static g2cCreateFunction create_functions[] =
       { NULL },
       create_gtk_file_chooser },
       
+    { "GtkFileChooserWidget", NULL,
+      { NULL },
+      create_gtk_file_chooser },  
+      
     { "GtkFileChooserButton", NULL,
       { NULL },
       create_gtk_file_chooser_button },
@@ -330,6 +336,10 @@ static g2cCreateFunction create_functions[] =
     { "GtkRecentChooserDialog", NULL,
       { NULL },      
       create_gtk_recent_chooser_dialog },
+      
+    { "GtkRecentChooserWidget", NULL,
+      { NULL },      
+      create_gtk_recent_chooser_dialog },  
       
      { "GtkRecentManager", "gtk_recent_manager_new ()",
       { NULL },
@@ -515,6 +525,8 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkFileChooserButton", "action"},
     { "GtkFileChooserButton", "title"},
     { "GtkFontChooserDialog", "type" },
+    { "GtkFontChooserDialog", "language"},
+    { "GtkFontChooserWidget", "language"},
     { "GtkFontButton", "language" },
     { "GtkImage", "icon_size" },
     { "GtkImage", "image_visual" },
@@ -570,7 +582,6 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkRadioMenuItem", "accel_group"},
     { "GtkRecentChooserDialog", "recent_manager"},
     { "GtkRecentChooserDialog", "type" },
-    { "GtkRecentManager", "filename" },
     { "GtkRuler", "upper" },
     { "GtkRuler", "position" },
     { "GtkRuler", "lower" },    
@@ -1161,6 +1172,12 @@ static g2cSpecialHandler special_handlers[] =
       {  NULL },
          NULL,
          colour_chooser_rgba },
+         
+      { "GtkColorChooserWidget", "rgba",
+         NULL,
+      {  NULL },
+         NULL,
+         colour_chooser_rgba },   
 
       { "GtkColorButton", "use_alpha",
       "\tgtk_color_chooser_set_use_alpha (GTK_COLOR_CHOOSER (gui->%s), %s);\n",
@@ -1312,7 +1329,7 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },  
         
-    { "GtkFileChooserDialog", "filter",
+    { "GtkFileChooser", "filter",
       NULL,
       {  NULL },
       NULL,
@@ -1360,11 +1377,17 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },   
       
-     { "GtkFileChooserButton", "filter",
-      "\tgtk_file_chooser_set_filter (GTK_FILE_CHOOSER (gui->%s), GTK_FILE_FILTER(gui->%s));\n",
-      { "name", "filter", NULL },
+//     { "GtkFileChooserButton", "filter",
+//      "\tgtk_file_chooser_set_filter (GTK_FILE_CHOOSER (gui->%s), GTK_FILE_FILTER(gui->%s));\n",
+//      { "name", "filter", NULL },
+//      NULL,
+//      NULL },
+      
+    { "GtkFileChooserWidget", "search_mode",
+      "\tg_object_set(G_OBJECT(gui->%s), \"search-mode\", %s, NULL);\n",
+      { "name", "search_mode", NULL },
       NULL,
-      NULL },
+      NULL },  
       
     { "GtkFlowBox", "selection_mode",
        NULL,
@@ -1377,8 +1400,14 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "$font", NULL },
       NULL,
       NULL },
+      
+//      { "GtkFontChooser", "language",
+//        "\tgtk_font_chooser_set_language(GTK_FONT_CHOOSER(gui->%s), %s);\n",
+//      { "name", "$language", NULL },
+//      NULL,
+//      NULL },
 
-     { "GtkFontChooserDialog", "show_preview_entry",
+     { "GtkFontChooser", "show_preview_entry",
       "\tgtk_font_chooser_set_show_preview_entry (GTK_FONT_CHOOSER (gui->%s), %s);\n",
       { "name", "show_preview_entry", NULL },
       NULL,
@@ -2155,41 +2184,53 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },    
       
-    { "GtkRecentChooserDialog", "limit",
+    { "GtkRecentChooser", "limit",
          "\tgtk_recent_chooser_set_limit (GTK_RECENT_CHOOSER(gui->%s), %s);\n",
       { "name", "limit", NULL },
          NULL,
          NULL },
          
-    { "GtkRecentChooserDialog", "filter",
+    { "GtkRecentChooser", "filter",
          NULL,
       {  NULL },
          NULL,
          file_chooser_filter },
          
-    { "GtkRecentChooserDialog", "select_multiple",
+    { "GtkRecentChooser", "select_multiple",
          "\tgtk_recent_chooser_set_select_multiple (GTK_RECENT_CHOOSER(gui->%s), %s);\n",
       { "name", "select_multiple", NULL },
          NULL,
          NULL },
          
-    { "GtkRecentChooserDialog", "show_private",
+    { "GtkRecentChooser", "show_private",
          "\tgtk_recent_chooser_set_show_private (GTK_RECENT_CHOOSER(gui->%s), %s);\n",
       { "name", "show_private", NULL },
          NULL,
          NULL },
          
-    { "GtkRecentChooserDialog", "show_tips",
+    { "GtkRecentChooser", "show_tips",
          "\tgtk_recent_chooser_set_show_tips (GTK_RECENT_CHOOSER(gui->%s), %s);\n",
       { "name", "show_tips", NULL },
          NULL,
          NULL },
          
-     { "GtkRecentChooserDialog", "show_not_found",
+     { "GtkRecentChooser", "show_not_found",
          "\tgtk_recent_chooser_set_show_not_found (GTK_RECENT_CHOOSER(gui->%s), %s);\n",
       { "name", "show_not_found", NULL },
          NULL,
          NULL },
+         
+     { "GtkRecentChooser", "sort_type",
+         NULL,
+      {  NULL },
+         NULL,
+         recent_chooser_sort_type }, 
+         
+     { "GtkRecentManager", "filename",
+        NULL,
+      { "name", "$filename", NULL },
+         NULL,
+         recent_manager_filename },
          
      { "GtkRevealer", "transition_type",
       NULL,
@@ -3826,9 +3867,15 @@ gchar *type_name = NULL;
     g_assert( NULL != widget ); 
     transient = g2c_widget_get_property( widget, "transient_for" ); 
     type_name = g2c_transform_name( CURRENT_PROJECT->main_widget->name, NT_TYPENAME );
-    fprintf( CURRENT_FILE,
-            "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((%s *) owner)->gui->%s));\n",
-            widget->name, type_name, transient);
+    if ( strcmp( CURRENT_PROJECT->main_widget->name, transient ) == 0 )
+        fprintf( CURRENT_FILE,
+                "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((%s *) owner)->gui->%s));\n",
+                widget->name, type_name, transient);
+    else {
+        fprintf( CURRENT_FILE,
+                "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((%s *) owner)->%sgui->%s));\n",
+                widget->name, type_name, transient, transient);     
+    }
     g_free(  type_name );
 }
 
@@ -3844,7 +3891,8 @@ gboolean sibling = FALSE;
     top_widget = g2c_widget_get_top_parent(widget);
     sibling = is_in_widget_list(top_widget->associates, filter);
     
-    if (strcmp(widget->klass_name,"GtkRecentChooserDialog") == 0) {
+    if ( (strcmp(widget->klass_name,"GtkRecentChooserDialog") == 0) ||
+         (strcmp(widget->klass_name,"GtkRecentChooserWidget") == 0) )  {
         if (sibling == TRUE) {
             fprintf( CURRENT_FILE,
                     "\tgtk_recent_chooser_set_filter (GTK_RECENT_CHOOSER(gui->%s), GTK_RECENT_FILTER(gui->%s));\n",
@@ -3854,7 +3902,9 @@ gboolean sibling = FALSE;
                     "\tgtk_recent_chooser_set_filter (GTK_RECENT_CHOOSER(gui->%s), GTK_RECENT_FILTER(((%s *) owner)->gui->%s));\n",
                     widget->name, type_name, filter);
         }
-    } else {  /* GtkFileChooserDialog but not GtkFileChooserButton  */
+    } else if ( (strcmp(widget->klass_name,"GtkFileChooserDialog") == 0) ||
+                (strcmp(widget->klass_name,"GtkFileChooserWidget") == 0) ||
+                (strcmp(widget->klass_name,"GtkFileChooserButton") == 0) ) {  
         if (sibling == TRUE) {
             fprintf( CURRENT_FILE,
                     "\tgtk_file_chooser_set_filter (GTK_FILE_CHOOSER (gui->%s), GTK_FILE_FILTER(gui->%s));\n",            
@@ -3864,6 +3914,8 @@ gboolean sibling = FALSE;
                     "\tgtk_file_chooser_set_filter (GTK_FILE_CHOOSER (gui->%s), GTK_FILE_FILTER(((%s *) owner)->gui->%s));\n",            
                     widget->name, type_name, filter);
         }
+    } else {
+        g_message("*** Invalid class for filter: %s\n", widget->name);
     }
     g_free(  type_name );    
 }
@@ -4114,6 +4166,39 @@ gchar * mode = NULL;
            "\tgtk_scale_set_value_pos (GTK_SCALE (gui->%s), %s);\n",
            widget->name,  mode);
     g_free( mode );     
+}
+
+void recent_chooser_sort_type( g2cWidget *widget )
+{
+gchar * sort = NULL;
+gchar * mode = NULL;
+
+    g_assert( NULL != widget );
+    
+    sort = g2c_widget_get_property( widget, "sort_type" );
+    if (sort == NULL) return;
+    mode = make_enumeral ("GTK_RECENT_SORT", sort );
+    fprintf( CURRENT_FILE,
+           "\tgtk_recent_chooser_set_sort_type (GTK_RECENT_CHOOSER (gui->%s), %s);\n",
+           widget->name,  mode);
+    g_free( mode );     
+}
+
+void recent_manager_filename( g2cWidget *widget )
+{
+gchar *filename  = NULL;
+gchar *filename2  = NULL;
+gchar *filename3  = NULL;
+
+    g_assert( NULL != widget );
+
+    filename = g2c_widget_get_property( widget, "filename" );
+    if (filename == NULL) return;
+    filename2 = g_strdelimit(filename, "\\", '/');
+    filename3 = g_strdelimit(filename2, "\n", ' ');
+    fprintf( CURRENT_FILE,
+           "\tgtk_recent_manager_add_item (GTK_RECENT_MANAGER (gui->%s), \"%s\");\n",
+            widget->name, filename3);
 }
 
 void stack_transition( g2cWidget *widget )
@@ -5170,36 +5255,41 @@ create_gtk_entry( g2cWidget *widget )
 void 
 create_gtk_file_chooser ( g2cWidget *widget )
 {
-gchar *init_action = NULL;    
+gchar *init_action = NULL;  
 gchar *action = NULL;
-gchar *enumaction = NULL;
 gchar *title = NULL;
+gchar *enumaction = NULL;
 
    g_assert( NULL != widget );
    
-   if ( NULL == widget->parent )
-   {
-       init_action = g2c_widget_get_property( widget, "action" );
-       if (init_action != NULL) 
-           action = g_strdelimit( init_action, ":-", '_' );
-       if (action == NULL) {
-          enumaction = g_strdup( "GTK_FILE_CHOOSER_ACTION_OPEN" );
-       } else {
-          enumaction = make_enumeral ( "GTK_FILE_CHOOSER_ACTION", action );
-       }
-       title = g2c_widget_get_property( widget, "title" );
-       if (title == NULL) {
-          fprintf( CURRENT_FILE,
+    init_action = g2c_widget_get_property( widget, "action" );
+    if (init_action != NULL) 
+        action = g_strdelimit( init_action, ":-", '_' );
+    if (action == NULL) {
+       enumaction = g_strdup( "GTK_FILE_CHOOSER_ACTION_OPEN" );
+    } else {
+       enumaction = make_enumeral ( "GTK_FILE_CHOOSER_ACTION", action );
+    }    
+    if (strcmp(widget->klass_name,"GtkFileChooserDialog") == 0) {
+        if ( NULL != widget->parent ) return;
+        title = g2c_widget_get_property( widget, "title" );
+        if (title == NULL) {                           
+            fprintf( CURRENT_FILE,
                "\tgui->%s = (GtkFileChooserDialog*) gtk_file_chooser_dialog_new (\"\", NULL, %s, NULL, NULL);\n",
-               widget->name, enumaction ); 
-       } else {       
-          fprintf( CURRENT_FILE,
+               widget->name, enumaction );
+        } else {
+            fprintf( CURRENT_FILE,
                "\tgui->%s = (GtkFileChooserDialog*) gtk_file_chooser_dialog_new (\"%s\", NULL, %s, NULL, NULL);\n",
                widget->name, title, enumaction );
-       }
-       g_free ( enumaction );
-   }
-   
+        }
+         
+     } else if (strcmp(widget->klass_name,"GtkFileChooserWidget") == 0) {
+        fprintf( CURRENT_FILE,
+             "\tgui->%s = (GtkFileChooserWidget*) gtk_file_chooser_widget_new (%s);\n",
+             widget->name, enumaction );                                       
+     }
+    g_free ( enumaction );
+     
 }
 
 void
@@ -5562,17 +5652,35 @@ create_gtk_radio_menu_item( g2cWidget *widget )
 void create_gtk_recent_chooser_dialog ( g2cWidget *widget )
 {
 gchar *recent_manager = NULL;
+gchar *func_name = NULL;
+gchar *caps_name = NULL;
 
     g_assert( NULL != widget );
-    recent_manager = g2c_widget_get_property( widget, "recent_manager" );    
-    if (recent_manager == NULL) {
-        fprintf( CURRENT_FILE,
-        "\tgui->%s = (GtkRecentChooserDialog *) gtk_recent_chooser_dialog_new (NULL, NULL, NULL, NULL, NULL);",
-                widget->name);
-    } else {
-        fprintf( CURRENT_FILE,
-        "\tgui->%s = (GtkRecentChooserDialog *) gtk_recent_chooser_dialog_new_for_manager (NULL, NULL, gui->%s, NULL, NULL);",
-                widget->name, recent_manager);
+    recent_manager = g2c_widget_get_property( widget, "recent_manager" ); 
+    func_name = g2c_transform_name ( widget->klass_name, NT_FUNCTION );   /* e.g. gtk_recent_chooser */
+    caps_name = g_utf8_strup ( func_name, strlen(func_name) ); /* e.g. GTK_RECENT_CHOOSER  */
+    if (strcmp(widget->klass_name, "GtkRecentChooserDialog") == 0 )  {
+        if (recent_manager == NULL) {
+            fprintf( CURRENT_FILE,
+            "\tgui->%s = (%s *) %s_new (NULL, NULL, NULL, NULL, NULL);\n",
+                    widget->name, widget->klass_name, func_name);
+        } else {
+            fprintf( CURRENT_FILE,
+            "\tgui->%s = (%s *) %s_new_for_manager\n"
+                    "\t\t\t(NULL, NULL, gui->%s, NULL, NULL);\n",
+                    widget->name, widget->klass_name, func_name, recent_manager);
+        }
+    } else if (strcmp(widget->klass_name, "GtkRecentChooserWidget") == 0 )  {
+        if (recent_manager == NULL) {
+            fprintf( CURRENT_FILE,
+            "\tgui->%s = (%s *) %s_new ();\n",
+                    widget->name, widget->klass_name, func_name);
+        } else {
+            fprintf( CURRENT_FILE,
+            "\tgui->%s = (%s *) %s_new_for_manager\n"
+                    "\t\t\t(gui->%s);\n",
+                    widget->name, widget->klass_name, func_name, recent_manager);
+        }
     }
 }
 
@@ -6214,7 +6322,6 @@ g2c_widget_new( gchar *class_name )
       } else if (strcmp( widget->klass_name, "GtkWindowGroup" ) == 0) {  widget->klass = GTK_TYPE_WINDOW_GROUP;
 //      } else if (strcmp( widget->klass_name, "GtkIconFactory" ) == 0) {  widget->klass = GTK_TYPE_ICON_FACTORY;
 //      } else if (strcmp( widget->klass_name, "GtkStatusIcon" ) == 0) {  widget->klass = GTK_TYPE_STATUS_ICON;
-      } else if (strcmp( widget->klass_name, "GtkRecentFilter" ) == 0) {  widget->klass = GTK_TYPE_RECENT_FILTER;
       } else  if ( NULL == g_type_class_peek( widget->klass ) )
                  g_message( "Invalid type: %s\n", widget->klass_name );
  }
@@ -6258,6 +6365,10 @@ g2c_widget_new( gchar *class_name )
       else if ( strcmp( widget->klass_name, "GtkColorChooserDialog" ) == 0 ) widget->klass = GTK_TYPE_DIALOG;
       else if ( strcmp( widget->klass_name, "GtkFontChooserDialog" ) == 0 ) widget->klass = GTK_TYPE_FONT_CHOOSER_DIALOG;
       else if ( strcmp( widget->klass_name, "GtkRecentChooserDialog" ) == 0 ) widget->klass = GTK_TYPE_RECENT_CHOOSER_DIALOG;
+      else if ( strcmp( widget->klass_name, "GtkFileChooserWidget" ) == 0 ) widget->klass = GTK_TYPE_FILE_CHOOSER_DIALOG;
+      else if ( strcmp( widget->klass_name, "GtkColorChooserWidget" ) == 0 ) widget->klass = GTK_TYPE_DIALOG;
+      else if ( strcmp( widget->klass_name, "GtkFontChooserWidget" ) == 0 ) widget->klass = GTK_TYPE_FONT_CHOOSER_DIALOG;
+      else if ( strcmp( widget->klass_name, "GtkRecentChooserWidget" ) == 0 ) widget->klass = GTK_TYPE_RECENT_CHOOSER_DIALOG;
       else if ( strcmp( widget->klass_name, "GtkFileChooserDialog" ) == 0 ) widget->klass = GTK_TYPE_FILE_CHOOSER_DIALOG;
       else if ( strcmp( widget->klass_name, "GtkAppChooserDialog" ) == 0 ) widget->klass = GTK_TYPE_APP_CHOOSER_DIALOG;
       else if ( strcmp( widget->klass_name, "GtkAppChooserButton" ) == 0 ) widget->klass = GTK_TYPE_APP_CHOOSER_BUTTON;
@@ -6332,6 +6443,7 @@ g2c_widget_new( gchar *class_name )
       else if ( strcmp( widget->klass_name, "GtkFlowBoxChild" ) == 0 ) widget->klass = GTK_TYPE_FLOW_BOX_CHILD;
       else if ( strcmp( widget->klass_name, "GtkSizeGroup" ) == 0)     widget->klass = GTK_TYPE_SIZE_GROUP;
       else if ( strcmp( widget->klass_name, "GtkWindowGroup" ) == 0)   widget->klass = GTK_TYPE_WINDOW_GROUP;
+      else if ( strcmp( widget->klass_name, "GtkStatusIcon" ) == 0 ) widget->klass = GTK_TYPE_STATUS_ICON;
       else
         {
           g_message( "Unhandled class, %s, set to GtkWidget\n", widget->klass_name );

@@ -21,7 +21,8 @@
  **                    Function Prototypes                       **
  ******************************************************************/
 
-static void       output_main_file( g2cDoc *doc, gchar *file_name );
+static void       output_main_file( g2cDoc *doc, gchar *file_name, GList *top_list );
+static void       output_dialog_widget(g2cWidget *dialogue_widget, gchar *main, FILE *file);
 static void       parse_project_properties( g2cDoc *doc );
 static void       parse_top_level_widgets( g2cDoc *doc );
 static g2cWidget *parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, 
@@ -71,7 +72,7 @@ static void       output_toolbar_widget( g2cWidget *widget, FILE *file );
 static void       output_style( g2cWidget *widget, gchar *css_class, gint index);
 static void       handle_file_compare( gchar *temp_file_name, gchar *file_name );
 
-xmlNode  *     set_first_object(xmlNode *root_element );
+//xmlNode  *     set_first_object(xmlNode *root_element );
 
 
 static void
@@ -238,6 +239,8 @@ g2c_doc_output( g2cDoc *doc )
   gchar *filename = NULL;
   GList *run = NULL;
   GList *orphans = NULL;
+  GList *top_list = NULL;
+  g2cRequires *require;
   g2cWidget *widget = NULL;
   gchar *handlers_filename = NULL;
   gchar *control_file_name = NULL;
@@ -268,7 +271,8 @@ g2c_doc_output( g2cDoc *doc )
           (strcmp(widget->klass_name, "GtkSizeGroup") == 0) ||
           (strcmp(widget->klass_name, "GtkWindowGroup") == 0) ||
           (strcmp(widget->klass_name, "GtkPopover") == 0)  ||
-          (strcmp(widget->klass_name, "GtkPopoverMenu") == 0) ) {
+          (strcmp(widget->klass_name, "GtkPopoverMenu") == 0) ||
+          (strcmp(widget->klass_name, "GtkStatusIcon") == 0) ) {
           orphans = g_list_append(orphans, widget);
       }
       
@@ -327,9 +331,27 @@ g2c_doc_output( g2cDoc *doc )
   while (run != NULL) {
           widget = (g2cWidget *) run->data;
           analyse_requirements(doc->project->main_widget, widget); 
+          //g_message("REGISTER for dialog %s\n", widget->name);
           //print_out_register(widget);
           run = g_list_next(run);
   }
+  
+  //  set up top_list from requires list (actually transient_for)
+  run = g_list_first(doc->project->main_widget->requires);
+  while (run != NULL) {
+      require = (g2cRequires *) run->data;
+      if ( (is_widget_top_level(doc->project->main_widget, require->required)) &&
+           (is_widget_top_level(doc->project->main_widget, require->requiring)) )  {
+          dialog_requires_add(&top_list, require->requiring, require->required);
+      }
+      
+      run = g_list_next(run);
+  }
+  
+  //  sort top_list for dialogues
+  
+   sort_top_list(&top_list);
+  
   /*                   End of analysis and re-ordering of widgets               */ 
   
   /* Write out the main.c file */
@@ -358,7 +380,7 @@ g2c_doc_output( g2cDoc *doc )
   }
 #endif
   if( doc->project->output_main_file )
-    output_main_file( doc, filename );   
+    output_main_file( doc, filename, top_list );   
 
   /* Parse $src/main.c */
  
@@ -1550,7 +1572,7 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
  
   file = fopen( file_name, "w" );
   if (file == NULL) {
-      printf ("File %s could not be opened. %s\n", file_name, strerror(errno));
+      g_message ("File %s could not be opened. %s\n", file_name, strerror(errno));
       g_assert(file != NULL);  
   }
   CURRENT_FILE   = file;
@@ -3398,11 +3420,25 @@ handle_file_compare( gchar *temp_file_name, gchar *file_name )
 }
 
 void
-output_main_file ( g2cDoc *doc, gchar *file_name )
+output_dialog_widget(g2cWidget *dialogue_widget, gchar *main, FILE *file)
+{
+      fprintf( file, "  %s->%sgui = %s_gui_create ((gpointer) %s);\n", 
+              main,
+              dialogue_widget->name,
+              dialogue_widget->name,
+              main );
+      fprintf( file,
+           "  if (%s->%sgui == NULL) return 0;\n",
+           main, dialogue_widget->name );    
+}
+
+void
+output_main_file ( g2cDoc *doc, gchar *file_name, GList *top_list )
 {
   FILE   *file       = NULL;
   g2cWidget *widget = NULL;  
   g2cWidget *dialogue_widget = NULL;
+  g2cDialog_Requires *req;
   GList *run        = NULL;
   gchar *type_name  = NULL;
     
@@ -3475,19 +3511,28 @@ output_main_file ( g2cDoc *doc, gchar *file_name )
   fprintf( file,
            "  if (%s->gui == NULL) return 0;\n",
            widget->name );
+  // for members of top_list in order
+  run = g_list_first(top_list);
+  while (run != NULL) {
+      req = (g2cDialog_Requires *) run->data; 
+      dialogue_widget = get_dialog_widget_from_name( req->requiring );
+      if (dialogue_widget != NULL) {
+          output_dialog_widget(dialogue_widget, widget->name, file);
+      } else {    
+          g_message("No dialog named %s found\n", req->requiring);          
+      }
+      run = g_list_next(run);
+  }  
+  // go through dialogue_widgets and output for any which don't appear in top_list
   run = g_list_first(doc->project->dialogue_widgets);
   while (run != NULL) {
       dialogue_widget = (g2cWidget *) run->data; 
-      fprintf( file, "  %s->%sgui = %s_gui_create ((gpointer) %s);\n", 
-              widget->name,
-              dialogue_widget->name,
-              dialogue_widget->name,
-              widget->name );
-      fprintf( file,
-           "  if (%s->%sgui == NULL) return 0;\n",
-           widget->name, dialogue_widget->name );
+      if (is_dialogue_in_top_list(top_list, dialogue_widget->name) == FALSE)
+      {
+          output_dialog_widget(dialogue_widget, widget->name, file);
+      }
       run = g_list_next(run);
-  }   
+  }
   fprintf (file, "\n" );
   fprintf (file, "  gtk_main ();\n");
   fprintf (file, "  return 0;\n");
@@ -3516,26 +3561,6 @@ output_main_file ( g2cDoc *doc, gchar *file_name )
   
   return;
 }   /*  output_main_file  */
-
-xmlNode  * set_first_object(xmlNode *root_element )
-{
- xmlNode  *node = root_element;
- 
- /* root element name should be interface  */
-        
-    g_assert( strcmp(node->name,"interface") == 0 );
-    
-    node = get_first_child(node);      
-          
-    if (node->type == XML_COMMENT_NODE)   node = get_next_node(node);
-    
-    if ( strcmp(node->name,"requires") == 0 )  node = get_next_node(node);  /// glade 3.16.1 
-    
-    /* the node should now be an Element node with name object */  
-    g_assert( (node->type == XML_ELEMENT_NODE) && ( strcmp(node->name,"object") == 0 ));      
-    
-    return node;
-}
 
 static void  output_style( g2cWidget *widget, gchar *css_class, gint index)
 {

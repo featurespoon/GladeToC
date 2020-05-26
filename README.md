@@ -9,7 +9,7 @@ Widget coverage is currently as follows:
 
 Top Levels
 
-GtkWindow, GtkOffscreenWindow, GtkDialog, GtkAboutDialog, GtkFileChooserDialog, GtkColorChooserDialog, GtkFontChooserDialog,
+GtkWindow, GtkOffscreenWindow, GtkDialog, GtkAboutDialog, GtkFileChooserDialog, GtkColorChooserDialog, GtkFontChooserDialog, GtkRecentChooserDialog, 
 GtkMessageDialog, GtkAssistant.
 
 Containers
@@ -26,7 +26,7 @@ GtkLabel, GtkAccelLabel, GtkImage, GtkTextView, GtkTreeView (both Lists and Tree
 
 Miscellaneous
 
-GtkListStore, GtkTreeStore, GtkEntryBuffer, GtkTextBuffer, GtkAccelGroup, GtkAdjustment, GtkEntryCompletion, GtkFileFilter, GtkPlacesSidebar, GtkTreeModelFilter, GtkTreeModelSort, GtkTextTagTable, GtkTextTag, GtkSizeGroup, GtkWindowGroup
+GtkListStore, GtkTreeStore, GtkEntryBuffer, GtkTextBuffer, GtkAccelGroup, GtkAdjustment, GtkEntryCompletion, GtkFileFilter, GtkPlacesSidebar, GtkFilechooserWidget, GtkColorChooserWidget, GtkFontChooserWidget, GtkRecentChooserWidget, GtkTreeModelFilter, GtkTreeModelSort, GtkTextTagTable, GtkTextTag, GtkSizeGroup, GtkWindowGroup
 
 Coverage of the properties in Glade's Common tab (common to most widgets) is complete.
 

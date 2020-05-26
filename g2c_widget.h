@@ -142,6 +142,13 @@ typedef struct tag_g2cRequires
 }
 g2cRequires;
 
+typedef struct tag_g2cDialog_Requires
+{
+    gchar *required;
+    gchar *requiring;
+}
+g2cDialog_Requires;
+
 typedef struct tag_g2cColumn
 {
     gchar *col_name;
