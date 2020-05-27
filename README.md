@@ -26,7 +26,7 @@ GtkLabel, GtkAccelLabel, GtkImage, GtkTextView, GtkTreeView (both Lists and Tree
 
 Miscellaneous
 
-GtkListStore, GtkTreeStore, GtkEntryBuffer, GtkTextBuffer, GtkAccelGroup, GtkAdjustment, GtkEntryCompletion, GtkFileFilter, GtkPlacesSidebar, GtkFilechooserWidget, GtkColorChooserWidget, GtkFontChooserWidget, GtkRecentChooserWidget, GtkTreeModelFilter, GtkTreeModelSort, GtkTextTagTable, GtkTextTag, GtkSizeGroup, GtkWindowGroup
+GtkListStore, GtkTreeStore, GtkEntryBuffer, GtkTextBuffer, GtkAccelGroup, GtkAdjustment, GtkEntryCompletion, GtkFileFilter, GtkPlacesSidebar, GtkFilechooserWidget, GtkColorChooserWidget, GtkFontChooserWidget, GtkRecentChooserWidget, GtkTreeModelFilter, GtkTreeModelSort, GtkTextTagTable, GtkTextTag, GtkSizeGroup, GtkWindowGroup, GtkStatusIcon
 
 Coverage of the properties in Glade's Common tab (common to most widgets) is complete.
 

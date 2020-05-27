@@ -1026,7 +1026,8 @@ void allocate(g2cWidget *global, g2cWidget *widget, g2cWidget *orphan)
         widget->accel_widgets = g_list_append(widget->accel_widgets, orphan);
     } else if ( (strcmp(orphan->klass_name, "GtkMenu") == 0) ||                
                 (strcmp(orphan->klass_name, "GtkPopover") == 0)  ||
-                (strcmp(orphan->klass_name, "GtkPopoverMenu") == 0) )  {
+                (strcmp(orphan->klass_name, "GtkPopoverMenu") == 0) ||
+                (strcmp(orphan->klass_name, "GtkStatusIcon") == 0) )  {
         widget->popups = g_list_append(widget->popups, orphan);
     } else if ((strcmp(orphan->klass_name, "GtkListStore") == 0) || 
                 (strcmp(orphan->klass_name, "GtkTreeStore") == 0)  ||  
@@ -1044,8 +1045,7 @@ void allocate(g2cWidget *global, g2cWidget *widget, g2cWidget *orphan)
                 (strcmp(orphan->klass_name, "GtkSizeGroup") == 0) ||
                 (strcmp(orphan->klass_name, "GtkWindowGroup") == 0) ||
                 (strcmp(orphan->klass_name, "GtkFileFilter") == 0) ||
-                (strcmp(orphan->klass_name, "GtkLabel") == 0) ||
-                (strcmp(orphan->klass_name, "GtkStatusIcon") == 0) ) {
+                (strcmp(orphan->klass_name, "GtkLabel") == 0)  ) {
         widget->associates = g_list_append( widget->associates, orphan);
     } else {
         g_message("Unexpected orphan widget klass %s in allocation\n", orphan->klass_name);

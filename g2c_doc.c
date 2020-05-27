@@ -752,8 +752,9 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
           }
         }
       else if( strcmp( get_node_name( node ), "signal" ) == 0 )
-        {
+        {          
           signal = parse_signal( doc );
+          //g_message("signal %s for %s\n", signal->name, widget->name);
           g2c_widget_add_signal( widget, signal );
         }
       else if( strcmp( get_node_name( node ), "accelerator" ) == 0 )

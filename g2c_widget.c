@@ -1790,6 +1790,42 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },
       
+    { "GtkStatusIcon", "file",
+       "\tgtk_status_icon_set_from_file(GTK_STATUS_ICON(gui->%s), \"%s\");\n",
+      { "name", "file", NULL },
+      NULL,
+      NULL }, 
+      
+    { "GtkStatusIcon", "pixbuf",
+       "\tgtk_status_icon_set_from_file(GTK_STATUS_ICON(gui->%s), \"%s\");\n",
+      { "name", "pixbuf", NULL },
+      NULL,
+      NULL },  
+      
+    { "GtkStatusIcon", "stock",     
+       "\tgtk_status_icon_set_from_stock(GTK_STATUS_ICON(gui->%s), %s);\n",
+      { "name", "stock", NULL },
+      NULL,
+      NULL },
+      
+    { "GtkStatusIcon", "has_tooltip",     
+       "\tgtk_status_icon_set_has_tooltip(GTK_STATUS_ICON(gui->%s), %s);\n",
+      { "name", "has_tooltip", NULL },
+      NULL,
+      NULL },
+      
+    { "GtkStatusIcon", "icon_name",     
+       "\tgtk_status_icon_set_from_icon_name(GTK_STATUS_ICON(gui->%s), \"%s\");\n",
+      { "name", "icon_name", NULL },
+      NULL,
+      NULL },   
+      
+    { "GtkStatusIcon", "tooltip_text",     
+       "\tgtk_status_icon_set_tooltip_text(GTK_STATUS_ICON(gui->%s), \"%s\");\n",
+      { "name", "tooltip_text", NULL },
+      NULL,
+      NULL },     
+      
     { "GtkSwitch", "action_name",
       NULL,
       {  NULL },
@@ -3773,9 +3809,15 @@ gchar *markup = NULL;
         g_assert( NULL != widget );
         markup = g2c_widget_get_property( widget, "tooltip_markup");
         /* convert double quotes in markup to single quotes */
-        fprintf( CURRENT_FILE,
-                   "\tgtk_widget_set_tooltip_markup(GTK_WIDGET(gui->%s),%s);\n",
-                   widget->name,g2c_stringify( g_strdelimit(markup,"\"",'\'') ));
+        if (strcmp(widget->klass_name,"GtkStatusIcon") == 0) {
+            fprintf( CURRENT_FILE,
+                       "\tgtk_status_icon_set_tooltip_markup(GTK_STATUS_ICON(gui->%s),%s);\n",
+                       widget->name,g2c_stringify( g_strdelimit(markup,"\"",'\'') ));
+        } else {        
+            fprintf( CURRENT_FILE,
+                       "\tgtk_widget_set_tooltip_markup(GTK_WIDGET(gui->%s),%s);\n",
+                       widget->name,g2c_stringify( g_strdelimit(markup,"\"",'\'') ));
+        }
 }
 
 void message_dialog_secondary_text ( g2cWidget *widget )
