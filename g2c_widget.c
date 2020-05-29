@@ -516,7 +516,8 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkDialog", "has_resize_grip" },
     { "GtkDialog", "accel_group" },
     { "GtkEntry", "can_focus"},
-   /* { "GtkEntry","invisible_char_set" }, */
+    { "GtkEntry","invisible_char_set" }, 
+    { "GtkEntry","invisible_char" }, 
     { "GtkEntry", "shadow_type"},   // deprecated
     { "GtkEntry", "yalign" },
    /* { "GtkEntry","completion" }, */
@@ -1280,12 +1281,6 @@ static g2cSpecialHandler special_handlers[] =
       { NULL },
         NULL,
         entry_secondary_pixbuf }, 
-        
-    { "GtkEntry","invisible_char",
-        "\tgtk_entry_set_invisible_char (GTK_ENTRY(gui->%s), 0);\n",
-    { "name", NULL },
-        NULL,
-        NULL},
       
     { "GtkEntry","buffer",
         "\tgtk_entry_set_buffer (GTK_ENTRY(gui->%s), GTK_ENTRY_BUFFER (gui->%s));\n",
@@ -4401,8 +4396,8 @@ gchar * norm_label = NULL;
        return;
    }
    fprintf( CURRENT_FILE,
-           "\tgui->%simage = gtk_image_new_from_icon_name(\"%s\" ,GTK_ICON_SIZE_BUTTON);\n",
-           widget->name, stock_label);
+           "\tgui->%simage = gtk_image_new_from_stock(\"%s\" ,GTK_ICON_SIZE_BUTTON);\n",
+           widget->name, stock_label);   /* need to compile with -Wno-deprecated-declarations  */
    fprintf( CURRENT_FILE,
            "\tgtk_button_set_image(GTK_BUTTON (gui->%s), GTK_WIDGET(gui->%simage));\n",
            widget->name, widget->name);
@@ -4531,8 +4526,8 @@ gchar *handler = NULL;
            widget->name);
    if ( use_stock == TRUE ) {
         fprintf( CURRENT_FILE,
-                "\tgui->%simage = gtk_image_new_from_icon_name(\"%s\" ,GTK_ICON_SIZE_MENU);\n",
-                widget->name, stock_label);
+                "\tgui->%simage = gtk_image_new_from_stock(\"%s\" ,GTK_ICON_SIZE_MENU);\n",
+                widget->name, stock_label);    /* need to compile with -Wno-deprecated-declarations  */
         norm_label = remove_prefix(stock_label); 
         fprintf( CURRENT_FILE,
                 "\tgui->%slabel = (GtkLabel*) gtk_accel_label_new (\"%s\");\n",
@@ -5115,8 +5110,8 @@ gchar *nsize = NULL;
     if (icon_name != NULL) {
         nsize = make_icon_size_enumeral(strsize);
         fprintf ( CURRENT_FILE,
-                "\tgui->%s = (GtkImage*) gtk_image_new_from_icon_name(\"%s\", %s);\n",
-                widget->name, icon_name, nsize);
+                "\tgui->%s = (GtkImage*) gtk_image_new_from_stock(\"%s\", %s);\n",
+                widget->name, icon_name, nsize);    /* need to compile with -Wno-deprecated-declarations  */
         return;
     }
     if (resource != NULL) {
