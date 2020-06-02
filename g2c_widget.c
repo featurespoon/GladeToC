@@ -78,6 +78,7 @@ void menu_type_hint( g2cWidget *widget );
 void menu_button_popup( g2cWidget *widget );
 void message_dialog_secondary_text ( g2cWidget *widget );
 void notebook_packing( g2cWidget *widget, g2cWidget *box_widget );
+void other_markup( g2cWidget *widget );
 void pack_renderer( g2cWidget *widget );
 void pack_combo_box_column( g2cWidget *widget );
 void paragraph_background_rgb( g2cWidget *widget );
@@ -86,6 +87,7 @@ void range_lower_sensitivity( g2cWidget *widget );
 void range_upper_sensitivity( g2cWidget *widget );
 void recent_chooser_sort_type( g2cWidget *widget );
 void recent_manager_filename( g2cWidget *widget );
+void renderer_text_align( g2cWidget *widget );
 void scale_value_pos( g2cWidget *widget );
 void scale_button_icons ( g2cWidget *widget ); 
 void scrolled_window_placement ( g2cWidget *widget );
@@ -995,10 +997,16 @@ static g2cSpecialHandler special_handlers[] =
        NULL},   
        
     { "GtkCellRendererText", "alignment",
-       "\tg_object_set(G_OBJECT(gui->%s),\"alignment\", PANGO_ALIGN_%s, NULL);\n",
-       { "name","alignment", NULL },
        NULL,
-       NULL},    
+       { NULL },
+       NULL,
+       renderer_text_align}, 
+       
+    { "GtkCellRendererText", "wrap_mode",
+       NULL,
+       { NULL },
+       NULL,
+       label_label_wrap},     
        
     { "GtkCellRendererSpin", "text",
        NULL,
@@ -1130,7 +1138,13 @@ static g2cSpecialHandler special_handlers[] =
        "\tg_object_set(G_OBJECT(gui->%s),\"icon_name\", %s, NULL);\n",
        { "name","$icon_name", NULL },
        NULL,
-       NULL},     
+       NULL}, 
+       
+    { "GtkCellRendererText", "markup",
+       NULL,
+       {  NULL },
+       NULL,
+       other_markup},    
 
     { "GtkCheckButton", "active",
       "\tgtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (gui->%s), %s);\n",
@@ -2800,7 +2814,7 @@ static g2cCommonParam common_params[] =
     {"type_hint", FALSE, "GDK_WINDOW_TYPE_HINT", "GtkWindow"},
     {"gravity", FALSE, "GDK_GRAVITY", "GtkWindow"},
     {"position", FALSE, "GTK_WIN_POS", "GtkWindow"},
-    {"tooltip_markup", TRUE, NULL, NULL},
+/*    {"tooltip_markup", TRUE, NULL, NULL},  */
     {"events", TRUE, "int", NULL},
     {"modal", TRUE, NULL, "GtkWindow"},
     {"destroy_with_parent", TRUE, NULL, "GtkWindow"},
@@ -3038,7 +3052,7 @@ gdouble fsize;
     }
     fsize = g_ascii_strtod(size, NULL);
     fprintf( CURRENT_FILE,
-            "\tg_object_set(G_OBJECT(gui->%s),\"size_points\", %6.2f, NULL);\n",
+            "\tg_object_set(G_OBJECT(gui->%s),\"size-points\", %6.2f, NULL);\n",
             widget->name, fsize);
 }
 
@@ -3659,6 +3673,31 @@ gboolean underline = FALSE;
     g_free( label );
 }
 
+void other_markup( g2cWidget *widget )
+{
+gchar *markup = NULL;
+gchar *string_markup = NULL;
+
+    if (strcmp(widget->klass_name,"GtkCellRendererText") == 0) {
+        markup = g2c_widget_get_property( widget, "markup" );
+        string_markup = g2c_stringify(g_strdelimit(markup,"\"",'\''));
+        fprintf( CURRENT_FILE,
+           "\tg_object_set(G_OBJECT(gui->%s),\"markup\", %s, NULL);\n",
+                widget->name, string_markup );
+               
+    }
+//    if (strcmp(widget->klass_name,"GtkModelButton") == 0) {
+//        markup = g2c_widget_get_property( widget, "use_markup" );  /*  true/false  */
+//        string_markup = g_ascii_strup(markup, strlen(markup));
+//        if (string_markup != NULL) {
+//          fprintf( CURRENT_FILE,
+//             "\tg_object_set(G_OBJECT(gui->%s),\"use_markup\", %s, NULL);\n",
+//                widget->name, string_markup );
+//        }
+//    }
+    g_free( string_markup ); 
+}
+
 void label_label_wrap ( g2cWidget *widget )
 {
 gchar *wrap_mode = NULL;
@@ -3666,10 +3705,17 @@ gchar *wrap_enum = NULL;
  
     wrap_mode = g2c_widget_get_property( widget, "wrap_mode" );
     wrap_enum = make_enumeral( "PANGO_WRAP", wrap_mode );
-    fprintf( CURRENT_FILE,
-            "\tgtk_label_set_line_wrap_mode(GTK_LABEL(gui->%s), %s);\n",
-             widget->name,
-             wrap_enum);
+    if (strcmp(widget->klass_name,"GtkLabel") == 0) {
+        fprintf( CURRENT_FILE,
+                "\tgtk_label_set_line_wrap_mode(GTK_LABEL(gui->%s), %s);\n",
+                 widget->name,
+                 wrap_enum);
+    } else if (strcmp(widget->klass_name,"GtkCellRendererText") == 0) {
+        fprintf( CURRENT_FILE,
+                "\tg_object_set(G_OBJECT(gui->%s),\"wrap-mode\",  %s, NULL);\n",
+                 widget->name,
+                 wrap_enum);
+    }
     g_free( wrap_enum );    
 }
 
@@ -4140,6 +4186,26 @@ gchar *width  = NULL;
     fprintf( CURRENT_FILE,
         "\tgtk_layout_set_size (GTK_LAYOUT (gui->%s), %s, 100);\n",
                 widget->name, width);
+}
+
+void renderer_text_align( g2cWidget *widget )
+{
+gchar *alignment = NULL;
+gchar * align = NULL;
+
+    alignment = g2c_widget_get_property( widget, "alignment" );
+    if (g_ascii_strcasecmp(alignment, "center") == 0) {
+        align = g_strdup("PANGO_ALIGN_CENTER");
+    } else if (g_ascii_strcasecmp(alignment, "right") == 0) {
+        align = g_strdup("PANGO_ALIGN_RIGHT");
+    } else {
+        g_message("Invalid alignment for %s\n", widget->name);
+        return;
+    }
+    fprintf( CURRENT_FILE,
+            "\tg_object_set(G_OBJECT(gui->%s),\"alignment\", %s, NULL);\n",
+            widget->name, align);
+    g_free( align );
 }
 
 void
@@ -4790,7 +4856,7 @@ gchar * caps_name = NULL;
         fprintf( CURRENT_FILE,
              "\tgui->%s = (%s*) %s_new (\"\");\n",  
                  widget->name, widget->klass_name, func_name);         
-       return;   /*  markups set by label_use_markup  */
+       return;   /*  markups set by label_  */
     }    
     if (label == NULL) {        
             fprintf( CURRENT_FILE,
@@ -5798,7 +5864,7 @@ gchar *action = NULL;
     if (action == NULL) {
         // There is no option in Glade to set the role for GtkModelButtons when there is no action
         fprintf( CURRENT_FILE,
-              "\tg_object_set(G_OBJECT(gui->%s),\"role\", GTK_BUTTON_ROLE_CHECK, NULL);\n",
+              "\tg_object_set(G_OBJECT(gui->%s),\"role\", GTK_BUTTON_ROLE_NORMAL, NULL);\n",
               widget->name);  
     }
 }
@@ -6318,6 +6384,7 @@ g2c_widget_new( gchar *class_name )
       } else if (strcmp( widget->klass_name, "GtkLabel" ) == 0) {  widget->klass = GTK_TYPE_LABEL;
       } else if (strcmp( widget->klass_name, "GtkAccelLabel" ) == 0) {  widget->klass = GTK_TYPE_ACCEL_LABEL;
       } else if (strcmp( widget->klass_name, "GtkLayout" ) == 0) {  widget->klass = GTK_TYPE_LAYOUT;
+      } else if (strcmp( widget->klass_name, "GtkListBox" ) == 0) {  widget->klass = GTK_TYPE_LIST_BOX;
       } else if (strcmp( widget->klass_name, "GtkListBoxRow" ) == 0) {  widget->klass = GTK_TYPE_LIST_BOX_ROW;
       } else if (strcmp( widget->klass_name, "GtkMenu" ) == 0) {  widget->klass = GTK_TYPE_MENU;
       } else if (strcmp( widget->klass_name, "GtkPaned" ) == 0) {  widget->klass = GTK_TYPE_PANED;
@@ -6345,6 +6412,7 @@ g2c_widget_new( gchar *class_name )
       } else if (strcmp( widget->klass_name, "GtkStackSwitcher" ) == 0) {  widget->klass = GTK_TYPE_STACK_SWITCHER;  
       } else if (strcmp( widget->klass_name, "GtkStackSidebar" ) == 0) {  widget->klass = GTK_TYPE_STACK_SIDEBAR;  
       } else if (strcmp( widget->klass_name, "GtkScale" ) == 0) {  widget->klass = GTK_TYPE_SCALE;
+      } else if (strcmp( widget->klass_name, "GtkSwitch" ) == 0) {  widget->klass = GTK_TYPE_SWITCH;
       } else if (strcmp( widget->klass_name, "GtkActionBar" ) == 0) {  widget->klass = GTK_TYPE_ACTION_BAR;
       } else if (strcmp( widget->klass_name, "GtkSearchBar" ) == 0) {  widget->klass = GTK_TYPE_SEARCH_BAR;
       } else if (strcmp( widget->klass_name, "GtkTextBuffer" ) == 0) {  widget->klass = GTK_TYPE_TEXT_BUFFER;
@@ -6426,6 +6494,8 @@ g2c_widget_new( gchar *class_name )
       else if ( strcmp( widget->klass_name, "GtkListBox" ) == 0 ) widget->klass = GTK_TYPE_LIST_BOX;
       else if ( strcmp( widget->klass_name, "GtkListBoxRow" ) == 0 ) widget->klass = GTK_TYPE_LIST_BOX_ROW;
       else if ( strcmp( widget->klass_name, "GtkCheckButton" ) == 0 ) widget->klass = GTK_TYPE_CHECK_BUTTON;
+      else if ( strcmp( widget->klass_name, "GtkToggleButton" ) == 0 ) widget->klass = GTK_TYPE_TOGGLE_BUTTON;
+      else if ( strcmp( widget->klass_name, "GtkScaleButton" ) == 0 ) widget->klass = GTK_TYPE_SCALE_BUTTON;
       else if ( strcmp( widget->klass_name, "GtkMenuButton" ) == 0 ) widget->klass = GTK_TYPE_MENU_BUTTON;
       else if ( strcmp( widget->klass_name, "GtkPopover" ) == 0 ) widget->klass = GTK_TYPE_POPOVER;
       else if ( strcmp( widget->klass_name, "GtkPopoverMenu" ) == 0 ) widget->klass = GTK_TYPE_POPOVER_MENU;
@@ -6708,7 +6778,6 @@ g2c_widget_set_property( g2cWidget *widget,
 */
   else
     {
-      //g_message("g2c_widget_set_property called for %s %s %s\n", widget->name, name, value);
       /* Add to the list of managed properties */
       
       proplist_add(widget, name, value);
@@ -6764,7 +6833,6 @@ g2cActionWidget * action_widget = g_new0( g2cActionWidget, 1 );
   action_widget->button_name = g_strdup(button_name);
   action_widget->responseid = g_strdup(response);
   
-  //g_message("add action widget: %s response: %s\n", button_name, response);
   widget->action_widgets = g_list_append( widget->action_widgets, action_widget ); 
 
 }
@@ -7770,7 +7838,6 @@ g2c_widget_create_arg_cb( gchar *name,
   GtkArgInfo *arg_info = NULL;
   gboolean flag;
   
-  //g_message("g2c_widget_create_arg_cb called for %s %s %s\n", widget->klass_name, name, value);
   
   if (strcmp(name, "visible") == 0)   {
       if (g2c_get_bool(value) == TRUE) {
@@ -8099,7 +8166,7 @@ while ( NULL != common_params[ i ].property )
                   
               } else {           /*  must use g_object_set call   */
                   fprintf( CURRENT_FILE, "\tg_object_set(G_OBJECT(gui->%s),%s, %s, NULL);\n",
-                          widget->name, g2c_stringify(keyword), print_value);
+                          widget->name, g2c_stringify(g_strdelimit(keyword, "_", '-')), print_value);
               }
           }
           g_free(print_value);          

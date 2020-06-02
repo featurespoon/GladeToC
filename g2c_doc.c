@@ -72,8 +72,6 @@ static void       output_toolbar_widget( g2cWidget *widget, FILE *file );
 static void       output_style( g2cWidget *widget, gchar *css_class, gint index);
 static void       handle_file_compare( gchar *temp_file_name, gchar *file_name );
 
-//xmlNode  *     set_first_object(xmlNode *root_element );
-
 
 static void
 init_types( g2cDoc *doc )
@@ -81,72 +79,101 @@ init_types( g2cDoc *doc )
   GTK_TYPE_WIDGET;
   GTK_TYPE_CONTAINER;
   GTK_TYPE_BIN;
-  GTK_TYPE_BUTTON;
+  GTK_TYPE_ABOUT_DIALOG;
+  GTK_TYPE_ACCEL_GROUP;
   GTK_TYPE_ACCEL_LABEL;
+  GTK_TYPE_ACTION_BAR;
   GTK_TYPE_ADJUSTMENT;
+/*  GTK_TYPE_ALIGNMENT;  */
+  GTK_TYPE_APP_CHOOSER_BUTTON;
   GTK_TYPE_ASPECT_FRAME;
+  GTK_TYPE_ASSISTANT;
   GTK_TYPE_BOX;
+  GTK_TYPE_BUTTON;
   GTK_TYPE_BUTTON_BOX;
   GTK_TYPE_CALENDAR;
   GTK_TYPE_CHECK_BUTTON;
-  GTK_TYPE_CHECK_MENU_ITEM;
-  /* GTK_TYPE_DATA; */
+  GTK_TYPE_COLOR_BUTTON;
+  GTK_TYPE_COLOR_CHOOSER_DIALOG;
+  GTK_TYPE_COLOR_CHOOSER_WIDGET;
+  GTK_TYPE_COMBO_BOX;
+  GTK_TYPE_COMBO_BOX_TEXT;
   GTK_TYPE_DIALOG;
   GTK_TYPE_DRAWING_AREA;
-  GTK_TYPE_EDITABLE;
   GTK_TYPE_ENTRY;
+  GTK_TYPE_ENTRY_BUFFER;
+  GTK_TYPE_ENTRY_COMPLETION;
   GTK_TYPE_EVENT_BOX;
-  /*GTK_TYPE_FILE_SELECTION;*/
+  GTK_TYPE_EXPANDER;
+  GTK_TYPE_FILE_CHOOSER_BUTTON;
+  GTK_TYPE_FILE_CHOOSER_DIALOG;
+  GTK_TYPE_FILE_CHOOSER_WIDGET;
+  GTK_TYPE_FILE_FILTER;
   GTK_TYPE_FIXED;
-  /*GTK_TYPE_FONT_SELECTION;
-  GTK_TYPE_FONT_SELECTION_DIALOG;*/
+  GTK_TYPE_FLOW_BOX;
+  GTK_TYPE_FONT_BUTTON;
+  GTK_TYPE_FONT_CHOOSER_DIALOG;
+  GTK_TYPE_FONT_CHOOSER_WIDGET;
   GTK_TYPE_FRAME;
   GTK_TYPE_GRID;
-  /*GTK_TYPE_HANDLE_BOX;
-  GTK_TYPE_HBOX;
-  GTK_TYPE_HSCALE;
-  GTK_TYPE_HSCROLLBAR;
-  GTK_TYPE_HSEPARATOR;*/
-  GTK_TYPE_BOX;
+  GTK_TYPE_HEADER_BAR;
+  GTK_TYPE_ICON_VIEW;
   GTK_TYPE_IMAGE;
-  /*GTK_TYPE_INPUT_DIALOG;
-   GTK_TYPE_INVISIBLE; 
-  GTK_TYPE_ITEM;*/
+  GTK_TYPE_INFO_BAR;
   GTK_TYPE_LABEL;
   GTK_TYPE_LAYOUT;
-  /*GTK_TYPE_LIST;
-  GTK_TYPE_LIST_ITEM;*/
+  GTK_TYPE_LEVEL_BAR;
+  GTK_TYPE_LINK_BUTTON;
+  GTK_TYPE_LIST_BOX;
+  GTK_TYPE_LIST_STORE;
   GTK_TYPE_MENU;
- /* GTK_TYPE_MISC; */
+  GTK_TYPE_MENU_BAR;
+  GTK_TYPE_MENU_BUTTON;
+  GTK_TYPE_MESSAGE_DIALOG;
+  GTK_TYPE_MODEL_BUTTON;
   GTK_TYPE_NOTEBOOK;
+  GTK_TYPE_OFFSCREEN_WINDOW;
+  GTK_TYPE_OVERLAY;
   GTK_TYPE_PANED;
-  /*GTK_TYPE_PIXMAP;
-  GTK_TYPE_PREVIEW;
-  GTK_TYPE_PROGRESS;*/
+  GTK_TYPE_PLACES_SIDEBAR;
+  GTK_TYPE_POPOVER;
+  GTK_TYPE_POPOVER_MENU;
   GTK_TYPE_PROGRESS_BAR;
   GTK_TYPE_RADIO_BUTTON;
-  GTK_TYPE_RADIO_MENU_ITEM;
-  GTK_TYPE_RANGE;
-  /*GTK_TYPE_RULER;*/
+  GTK_TYPE_RECENT_CHOOSER_DIALOG;
+  GTK_TYPE_RECENT_CHOOSER_WIDGET;
+  GTK_TYPE_REVEALER;
   GTK_TYPE_SCALE;
+  GTK_TYPE_SCALE_BUTTON;
   GTK_TYPE_SCROLLBAR;
   GTK_TYPE_SCROLLED_WINDOW;
+  GTK_TYPE_SEARCH_BAR;
+  GTK_TYPE_SEARCH_ENTRY;
   GTK_TYPE_SEPARATOR;
+  GTK_TYPE_SIZE_GROUP;
   GTK_TYPE_SPIN_BUTTON;
-  /*GTK_TYPE_TABLE;
-  GTK_TYPE_TEAROFF_MENU_ITEM;*/
-  GTK_TYPE_TEXT_VIEW;   // was GTK_TYPE_TEXT
+  GTK_TYPE_SPINNER;
+  GTK_TYPE_STACK;
+  GTK_TYPE_STACK_SIDEBAR;
+  GTK_TYPE_STACK_SWITCHER;
+  GTK_TYPE_STATUS_ICON;
+  GTK_TYPE_SWITCH;
+  GTK_TYPE_TEXT_BUFFER;
+  GTK_TYPE_TEXT_TAG;
+  GTK_TYPE_TEXT_TAG_TABLE;
+  GTK_TYPE_TEXT_VIEW;
   GTK_TYPE_TOGGLE_BUTTON;
   GTK_TYPE_TOOLBAR;
-  GTK_TYPE_TREE_VIEW;          
-  GTK_TYPE_TREE_VIEW_COLUMN;  
-  GTK_TYPE_TREE_SELECTION;
+  GTK_TYPE_TOOL_PALETTE;
+  GTK_TYPE_TREE_MODEL_FILTER;
+  GTK_TYPE_TREE_MODEL_SORT;
+  GTK_TYPE_TREE_STORE;
+  GTK_TYPE_TREE_VIEW ;
   GTK_TYPE_VIEWPORT;
-  GTK_TYPE_SCALE;
-  GTK_TYPE_SCROLLBAR;
-  GTK_TYPE_SEPARATOR;
+  GTK_TYPE_VOLUME_BUTTON;
   GTK_TYPE_WINDOW;
-  GTK_TYPE_COMBO_BOX_TEXT;
+  GTK_TYPE_WINDOW_GROUP;
+
 }
 
 
@@ -195,10 +222,10 @@ g2c_doc_destroy( g2cDoc *doc )
 {
   /* Where is the call to release the xmlDoc pointer? */
   if( doc->xmldoc )  xmlFreeDoc( doc->xmldoc );
-  //g_print("g2c_project_destroy entering\n");
+  
   if( doc->project ) g2c_project_destroy( doc->project );
   doc->current = NULL;
-  //g_print("g2c_doc_destroy exiting\n");
+  
   g_free( doc );
 }
 
@@ -753,8 +780,7 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
         }
       else if( strcmp( get_node_name( node ), "signal" ) == 0 )
         {          
-          signal = parse_signal( doc );
-          //g_message("signal %s for %s\n", signal->name, widget->name);
+          signal = parse_signal( doc );          
           g2c_widget_add_signal( widget, signal );
         }
       else if( strcmp( get_node_name( node ), "accelerator" ) == 0 )
