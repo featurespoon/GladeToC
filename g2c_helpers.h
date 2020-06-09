@@ -181,6 +181,12 @@ register_add(g2cWidget *main, gchar* name, g2cWidget *widget);
 void
 register_free(g2cRegister *reg);
 
+GList *
+topregister_add(GList *topregster, g2cWidget *widget, gboolean bmain);
+
+void
+topregister_free(g2cTopRegister *reg);
+
 void
 requires_add(g2cWidget *main, g2cWidget *widget, gchar *requires, gchar *required);
 
@@ -197,13 +203,25 @@ void
 free_requires(gpointer data);
 
 void 
-dialog_requires_add(GList **top_list, gchar *requiring, gchar *required);
+top_requires_add(GList **top_list, gchar *requiring, gchar *required);
 
 void
-dialog_require_free(g2cDialog_Requires *require);
+top_require_free(g2cRequires *require);
 
-void 
-sort_top_list(GList **top_list);
+GList *
+top_copy_requires(GList *requires);
+
+gboolean 
+sort_top_list(GList **top_list, GList **top_requires_list);
+
+gboolean
+top_detect_cycles(GList *top_requires_list);
+
+guint
+get_max_top_register_level(GList *topreglist);
+
+g2cTopRegister *
+find_top_widget_by_name(GList *register_list, gchar* name);
 
 gboolean 
 is_dialogue_in_top_list(GList *top_list, gchar *name);
@@ -269,10 +287,13 @@ gboolean
 detect_cycles(g2cWidget *global, g2cWidget *main);
 
 gchar *
-build_cycle(GList **chain, g2cWidget *main, GList *detect_copy, GList *requires_copy, gchar *next);
+build_cycle(GList **chain, GList *detect_copy, GList *requires_copy, gchar *next);
 
 gboolean 
 check_list_contains(GList **chain, gchar *required);
+
+void
+delete_chain(GList *chain);
 
 g2cRequires *
 find_linked_require(GList *requires_copy, gchar *requiring);

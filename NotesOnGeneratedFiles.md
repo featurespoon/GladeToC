@@ -18,3 +18,7 @@ CMakeLists.txt lists the files to be compiled. You will	notice that window1.c is
 File window1_gui.h, dialog1_gui.h define data structures which hold references to every widget within these top-level widgets.  File window1.h defines the 'master' data structure which refers to these data structures. Every widget is given a reference to this structure under the property 'owner'. This way, all widgets are accessible to signal handlers. 
 
 control.c may also contain populaters of liststores.  Any data set up in Glade for liststores will be used to generate code to populate the liststore, although on many occasions code to do that will have to be supplied by the programmer. In order to support a Model-View-Control (MVC) paradigm, this population code may be transferred to a new file, model.c. If this is done, it will be included in CMakeLists.txt. 
+
+To run cmake on Windows put
+cmake -DWIN32=yes .
+In any case to compile the generated code with debug information, add the option -DSOURCE_DEBUG=yes

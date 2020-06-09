@@ -39,14 +39,15 @@ void cell_background_rgb ( g2cWidget *widget );
 void colour_chooser_rgba ( g2cWidget *widget );
 void common_tooltip_markup ( g2cWidget *widget );
 void common_events ( g2cWidget *widget );
-void dialog_transient( g2cWidget *widget );
 void dialog_type_hint ( g2cWidget *widget );
 void entry_markup ( g2cWidget *widget );
 void entry_markup2 ( g2cWidget *widget );
 void entry_primary_pixbuf ( g2cWidget *widget );
 void entry_secondary_pixbuf ( g2cWidget *widget );
 void file_chooser_filter( g2cWidget *widget );
+void file_chooser_preview( g2cWidget *widget );
 void flowbox_selection_mode( g2cWidget *widget );
+void font_chooser_level( g2cWidget *widget);
 void font_size_points ( g2cWidget *widget );
 void font_size_scale ( g2cWidget *widget );
 void foreground_rgb ( g2cWidget *widget );
@@ -109,7 +110,9 @@ void underline_rgb( g2cWidget *widget );
 void view_column_alignment ( g2cWidget *widget );
 void volume_button_adjustment ( g2cWidget *widget ); 
 void volume_button_size ( g2cWidget *widget ); 
+void window_attached ( g2cWidget *widget ); 
 void window_icon ( g2cWidget *widget );
+void window_transient( g2cWidget *widget );
 
 /* Creation handler prototypes */
 void create_custom_widget( g2cWidget *widget );
@@ -199,10 +202,6 @@ static g2cCreateFunction create_functions[] =
       { "label", NULL },
       NULL },
       
-    { "GtkImageMenuItem", NULL,
-      { NULL },
-      menu_label },
-
     { "GtkColorChooserDialog", "gtk_color_chooser_dialog_new (NULL, NULL)",
       { NULL },
       NULL },
@@ -221,6 +220,10 @@ static g2cCreateFunction create_functions[] =
       
     { "GtkEntryCompletion", "gtk_entry_completion_new ()",
       { NULL },
+      NULL },
+      
+    { "GtkExpander", "gtk_expander_new (\"\")",
+      { NULL },
       NULL },  
       
     { "GtkFileChooserDialog", NULL,
@@ -235,7 +238,8 @@ static g2cCreateFunction create_functions[] =
       { NULL },
       create_gtk_file_chooser_button },
 
-    { "GtkFontChooserDialog", "gtk_font_chooser_dialog_new (NULL, NULL)",
+    { "GtkFontChooserDialog", 
+       "gtk_font_chooser_dialog_new (NULL, NULL)",
       { NULL },
       NULL },
       
@@ -270,6 +274,10 @@ static g2cCreateFunction create_functions[] =
     { "GtkImage", NULL,
       {  NULL },
       create_gtk_image },
+
+    { "GtkImageMenuItem", NULL,
+      { NULL },
+      menu_label },
 
     { "GtkLabel", NULL,
       { NULL },       
@@ -444,6 +452,7 @@ static g2cAfterParam after_params[] =
   {
     { "resize_mode"  },
     { "_overlay" },
+    { "_expand" },
     { "_page_type" },
     { "_page_title" },
     { "_page_complete" },
@@ -461,9 +470,9 @@ static g2cIgnoreParam ignore_params[] =
     { "Custom", "int1" },
     { "Custom", "int2" },
     { "Custom", "last_modification_time" },
-	{ "GtkAboutDialog", "translator_credits" },
+    { "GtkAboutDialog", "translator_credits" },
     { "GtkAccelLabel", "label" },
-	{ "GtkAccelLabel", "use_underline" },
+    { "GtkAccelLabel", "use_underline" },
     { "GtkAlignment", "xalign" },
     { "GtkAlignment", "yalign" }, 
     { "GtkAlignment", "xscale" },
@@ -491,8 +500,8 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkButton", "receives_default" },  /*  widget  */
     { "GtkButton", "xalign" },    /*  deprecated  */
     { "GtkButton", "yalign" },    /*  deprecated  */
-    { "GtkButton", "focus_on_click" }, /*  widget  */
-	{ "GtkButton", "use_underline" },   /*  in button create */
+//   { "GtkButton", "focus_on_click" }, /*  widget  */
+    { "GtkButton", "use_underline" },   /*  in button create */
     { "GtkButtonBox", "child_min_height" },
     { "GtkButtonBox", "child_ipad_y" },
     { "GtkCalendar", "show_day_names" },
@@ -505,7 +514,6 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkCheckButton", "can_focus" },
     { "GtkCheckButton", "xalign" },
     { "GtkCheckMenuItem", "label"},
-    { "GtkCheckMenuItem", "accel_group"},
     { "GtkCheckMenuItem", "use_underline"},
     { "GtkCellRendererSpinner", "Editable"}, 
     { "GtkColorButton", "alpha" },
@@ -522,21 +530,25 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkEntry","invisible_char" }, 
     { "GtkEntry", "shadow_type"},   // deprecated
     { "GtkEntry", "yalign" },
-   /* { "GtkEntry","completion" }, */
-    { "GtkFileChooserDialog", "action"},
-    { "GtkFileChooserDialog", "title"},
-    { "GtkFileChooserButton", "action"},
-    { "GtkFileChooserButton", "title"},
+    { "GtkFileChooserDialog", "action"},  /*  in create_gtk_file_chooser  */
+    { "GtkFileChooserDialog", "title"},   /*  in create_gtk_file_chooser  */    
+    { "GtkFileChooserButton", "action"},  /* in create_gtk_file_chooser_button  */
+    { "GtkFileChooserButton", "title"},   /* ditto  */
+    { "GtkFileChooserButton", "dialog"},  /* ditto  */
     { "GtkFontChooserDialog", "type" },
     { "GtkFontChooserDialog", "language"},
+    { "GtkFontChooserDialog", "level"},
     { "GtkFontChooserWidget", "language"},
+    { "GtkFontChooserWidget", "level"},
     { "GtkFontButton", "language" },
+    { "GtkFontButton", "level" },   /* not supported by Gtk 3.24  */
+    { "GtkFontButton", "preview_text" },
     { "GtkImage", "icon_size" },
     { "GtkImage", "image_visual" },
     { "GtkImage", "image_type" },
     { "GtkImage", "image_width" },
     { "GtkImage", "image_height" }, 
-    { "GtkImage", "resource" },
+    { "GtkImage", "resource" },  /* deprecated  */
     { "GtkImage", "pixbuf" },    /* see create_gtk_image  */
     { "GtkImage", "icon_name" }, /* see create_gtk_image  */
     { "GtkImageMenuItem", "label"},
@@ -582,7 +594,6 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkRadioToolButton", "group" },
     { "GtkRadioMenuItem", "draw_as_radio"},
     { "GtkRadioMenuItem", "use_underline"},
-    { "GtkRadioMenuItem", "accel_group"},
     { "GtkRecentChooserDialog", "recent_manager"},
     { "GtkRecentChooserDialog", "type" },
     { "GtkRuler", "upper" },
@@ -624,6 +635,7 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkTreeView", "vscroll_policy" },
     { "GtkTreeView", "rules_hint" },
     { "GtkTreeView", "fixed_height_mode" },
+    { "GtkTreeView", "expander_column"},  /* output under the column */
     { "GtkWidget", "child_name" },
     { "GtkWidget", "new_group" },
     { "GtkWidget", "value" },
@@ -702,7 +714,7 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       about_documenters }, 
 	  
-	{ "GtkAboutDialog", "version",
+    { "GtkAboutDialog", "version",
          "\tgtk_about_dialog_set_version (GTK_ABOUT_DIALOG(gui->%s), \"%s\");\n",
       { "name", "version", NULL },
          NULL,
@@ -1145,18 +1157,6 @@ static g2cSpecialHandler special_handlers[] =
        {  NULL },
        NULL,
        other_markup},    
-
-    { "GtkCheckButton", "active",
-      "\tgtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (gui->%s), %s);\n",
-      { "name", "active", NULL, NULL, NULL },
-      NULL,
-      NULL },
-      
-    { "GtkCheckButton", "draw_indicator",
-      "\tg_object_set(G_OBJECT(gui->%s),\"draw_indicator\", %s,NULL);\n",
-      { "name", "draw_indicator", NULL },
-      NULL,
-      NULL },
       
     { "GtkCheckButton", "label",
       NULL,
@@ -1181,6 +1181,12 @@ static g2cSpecialHandler special_handlers[] =
       {  NULL },
          NULL,
          colour_chooser_rgba },
+      
+      { "GtkColorChooserDialog", "use_alpha",
+      "\tgtk_color_chooser_set_use_alpha (GTK_COLOR_CHOOSER (gui->%s), %s);\n",
+      { "name", "use_alpha", NULL },
+      NULL,
+      NULL },
          
       { "GtkColorButton", "rgba",
          NULL,
@@ -1194,7 +1200,7 @@ static g2cSpecialHandler special_handlers[] =
          NULL,
          colour_chooser_rgba },   
 
-      { "GtkColorButton", "use_alpha",
+      { "GtkColorChooser", "use_alpha",
       "\tgtk_color_chooser_set_use_alpha (GTK_COLOR_CHOOSER (gui->%s), %s);\n",
       { "name", "use_alpha", NULL },
       NULL,
@@ -1218,12 +1224,6 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },
       
-     { "GtkDialog", "transient_for",   /* also applies to child dialog classes */
-         NULL,
-      {  NULL },
-         NULL,
-         dialog_transient },
-
     { "GtkDialog", "resizable",
       "\tgtk_window_set_resizable (GTK_WINDOW (gui->%s), %s);\n",
       { "name", "resizable", NULL },
@@ -1336,7 +1336,13 @@ static g2cSpecialHandler special_handlers[] =
       "\tgtk_entry_completion_set_model (GTK_ENTRY_COMPLETION (gui->%s), GTK_TREE_MODEL(gui->%s));\n",
       { "name", "model", NULL },
       NULL,
-      NULL },  
+      NULL },
+      
+    { "GtkFileChooser", "extra_widget",
+      NULL,
+      { NULL },
+      NULL,
+      file_chooser_preview },   
         
     { "GtkFileChooser", "filter",
       NULL,
@@ -1344,53 +1350,65 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       file_chooser_filter },
       
-    { "GtkFileChooserDialog", "create_folders",
+    { "GtkFileChooser", "create_folders",
       "\tgtk_file_chooser_set_create_folders (GTK_FILE_CHOOSER (gui->%s), %s);\n",
       { "name", "create_folders", NULL },
       NULL,
-      NULL },  
+      NULL },
       
-    { "GtkFileChooserDialog", "preview_widget_active",
+    { "GtkFileChooser", "preview_widget",
+      NULL,
+      { NULL },
+      NULL,
+      file_chooser_preview },    
+      
+    { "GtkFileChooser", "preview_widget_active",
       "\tgtk_file_chooser_set_preview_widget_active (GTK_FILE_CHOOSER (gui->%s), %s);\n",
       { "name", "preview_widget_active", NULL },
       NULL,
       NULL }, 
       
-    { "GtkFileChooserDialog", "use_preview_label",
+    { "GtkFileChooser", "use_preview_label",
       "\tgtk_file_chooser_set_use_preview_label (GTK_FILE_CHOOSER (gui->%s), %s);\n",
       { "name", "use_preview_label", NULL },
       NULL,
       NULL }, 
       
-    { "GtkFileChooserDialog", "do_overwrite_confirmation",
+    { "GtkFileChooser", "do_overwrite_confirmation",
       "\tgtk_file_chooser_set_do_overwrite_confirmation (GTK_FILE_CHOOSER (gui->%s), %s);\n",
       { "name", "do_overwrite_confirmation", NULL },
       NULL,
       NULL },  
       
-    { "GtkFileChooserDialog", "local_only",
+    { "GtkFileChooser", "local_only",
       "\tgtk_file_chooser_set_local_only (GTK_FILE_CHOOSER (gui->%s), %s);\n",
       { "name", "local_only", NULL },
       NULL,
       NULL }, 
       
-    { "GtkFileChooserDialog", "select_multiple",
+    { "GtkFileChooser", "select_multiple",
       "\tgtk_file_chooser_set_select_multiple (GTK_FILE_CHOOSER (gui->%s), %s);\n",
       { "name", "select_multiple", NULL },
       NULL,
       NULL }, 
       
-    { "GtkFileChooserDialog", "show_hidden",
+    { "GtkFileChooser", "show_hidden",
       "\tgtk_file_chooser_set_show_hidden (GTK_FILE_CHOOSER (gui->%s), %s);\n",
       { "name", "show_hidden", NULL },
       NULL,
-      NULL },   
+      NULL }, 
       
-//     { "GtkFileChooserButton", "filter",
-//      "\tgtk_file_chooser_set_filter (GTK_FILE_CHOOSER (gui->%s), GTK_FILE_FILTER(gui->%s));\n",
-//      { "name", "filter", NULL },
-//      NULL,
-//      NULL },
+    { "GtkFileChooserButton", "focus_on_click",
+      "\tgtk_file_chooser_button_set_focus_on_click (GTK_FILE_CHOOSER_BUTTON (gui->%s), %s);\n",
+      { "name", "focus_on_click", NULL },
+      NULL,
+      NULL },  
+      
+    { "GtkFileChooserButton", "width_chars",
+      "\tgtk_file_chooser_button_set_width_chars (GTK_FILE_CHOOSER_BUTTON (gui->%s), %s);\n",
+      { "name", "width_chars", NULL },
+      NULL,
+      NULL },   
       
     { "GtkFileChooserWidget", "search_mode",
       "\tg_object_set(G_OBJECT(gui->%s), \"search-mode\", %s, NULL);\n",
@@ -1415,7 +1433,19 @@ static g2cSpecialHandler special_handlers[] =
 //      { "name", "$language", NULL },
 //      NULL,
 //      NULL },
+      
+    { "GtkFontChooser", "font",
+      "\tgtk_font_chooser_set_font (GTK_FONT_CHOOSER (gui->%s), %s);\n",
+      { "name", "$font", NULL },
+      NULL,
+      NULL },  
 
+      { "GtkFontChooser", "level",
+        NULL,
+      { NULL },
+        NULL,
+       font_chooser_level },
+      
      { "GtkFontChooser", "show_preview_entry",
       "\tgtk_font_chooser_set_show_preview_entry (GTK_FONT_CHOOSER (gui->%s), %s);\n",
       { "name", "show_preview_entry", NULL },
@@ -1488,13 +1518,18 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       menu_item_use_stock },
       
-/*
-    { "GtkImageMenuItem", "accel_path",
+    { "GtkMenu", "accel_path",
+      "\tgtk_menu_set_accel_path (GTK_MENU (gui->%s), %s);\n",
+      { "name", "$accel_path", NULL },
+      NULL,
+      NULL },    
+
+    { "GtkMenuItem", "accel_path",
       "\tgtk_menu_item_set_accel_path (GTK_MENU_ITEM (gui->%s), %s);\n",
       { "name", "$accel_path", NULL },
       NULL,
       NULL },
-*/
+
    
 //    { "GtkImage", "pixbuf",   /*  ignored  */
 //      NULL,
@@ -1630,7 +1665,13 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       {  NULL },
       NULL,
-      attach_action },   
+      attach_action },
+      
+    { "GtkMenu", "accel_group",
+       "\tgtk_menu_set_accel_group(GTK_MENU(gui->%s), GTK_ACCEL_GROUP(gui->%s));\n",
+       { "name","accel_group", NULL },
+       NULL,
+       NULL},  
 
     { "GtkMenu", "anchor_hints",
       NULL,
@@ -1656,11 +1697,11 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        NULL}, 
       
-    { "GtkMenuButton", "draw_indicator",
-       "\tg_object_set(G_OBJECT(gui->%s),\"draw_indicator\", %s, NULL);\n",
-       { "name","draw_indicator", NULL },
-       NULL,
-       NULL}, 
+//    { "GtkMenuButton", "draw_indicator",
+//       "\tg_object_set(G_OBJECT(gui->%s),\"draw_indicator\", %s, NULL);\n",
+//       { "name","draw_indicator", NULL },
+//       NULL,
+//       NULL}, 
        
      { "GtkMenuButton", "align_widget",
        "\tgtk_menu_button_set_align_widget(GTK_MENU_BUTTON(gui->%s), GTK_WIDGET(gui->%s));\n",
@@ -1776,17 +1817,7 @@ static g2cSpecialHandler special_handlers[] =
       { NULL },
       NULL,
       scale_value_pos },     
-      
-    { "GtkScrolledWindow", "hadjustment",
-      "\tgtk_scrolled_window_set_hadjustment (GTK_SCROLLED_WINDOW (gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
-      { "name", "hadjustment", NULL },
-      NULL }, 
-      
-    { "GtkScrolledWindow", "vadjustment",
-      "\tgtk_scrolled_window_set_vadjustment (GTK_SCROLLED_WINDOW (gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
-      { "name", "vadjustment", NULL },
-      NULL }, 
-      
+        
     { "GtkStack", "transition_type",
       NULL,
       { NULL },
@@ -2027,26 +2058,6 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        attach_action},    
       
-    { "GtkViewport", "hadjustment",
-      "\tgtk_scrollable_set_hadjustment (GTK_SCROLLABLE (gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
-      { "name", "hadjustment", NULL },
-      NULL }, 
-      
-    { "GtkViewport", "vadjustment",
-      "\tgtk_scrollable_set_vadjustment (GTK_SCROLLABLE (gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
-      { "name", "vadjustment", NULL },
-      NULL },     
-      
-    { "GtkViewport", "hscroll_policy",
-      "\tgtk_scrollable_set_hscroll_policy (GTK_SCROLLABLE (gui->%s), GTK_SCROLL_NATURAL);\n",
-      { "name", NULL },
-      NULL },
-      
-    { "GtkViewport", "vscroll_policy",
-      "\tgtk_scrollable_set_vscroll_policy (GTK_SCROLLABLE (gui->%s), GTK_SCROLL_NATURAL);\n",
-      { "name", NULL },
-      NULL },
-      
     { "GtkLayout", "hscroll_policy",
       "\tgtk_scrollable_set_hscroll_policy (GTK_SCROLLABLE (gui->%s), GTK_SCROLL_NATURAL);\n",
       { "name", NULL },
@@ -2107,19 +2118,7 @@ static g2cSpecialHandler special_handlers[] =
       "\tgtk_tool_item_set_is_important (GTK_TOOL_ITEM (gui->%s), %s);\n",
       { "name", "is_important", NULL },
       NULL,
-      NULL }, 
-      
-    { "GtkMenuToolButton", "visible_horizontal",
-      "\tgtk_tool_item_set_visible_horizontal (GTK_TOOL_ITEM (gui->%s), %s);\n",
-      { "name", "visible_horizontal", NULL },
-      NULL,
       NULL },  
-      
-    { "GtkMenuToolButton", "visible_vertical",
-      "\tgtk_tool_item_set_visible_vertical (GTK_TOOL_ITEM (gui->%s), %s);\n",
-      { "name", "visible_vertical", NULL },
-      NULL,
-      NULL }, 
       
     { "GtkMessageDialog", "secondary_text",
          NULL,
@@ -2301,6 +2300,16 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       volume_button_size }, 
       
+    { "GtkScrolledWindow", "hadjustment",
+      "\tgtk_scrolled_window_set_hadjustment (GTK_SCROLLED_WINDOW (gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
+      { "name", "hadjustment", NULL },
+      NULL }, 
+      
+    { "GtkScrolledWindow", "vadjustment",
+      "\tgtk_scrolled_window_set_vadjustment (GTK_SCROLLED_WINDOW (gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
+      { "name", "vadjustment", NULL },
+      NULL }, 
+      
     { "GtkScrolledWindow", "kinetic_scrolling",
       "\tgtk_scrolled_window_set_kinetic_scrolling(GTK_SCROLLED_WINDOW(gui->%s), %s);\n",
       { "name", "kinetic_scrolling", NULL },
@@ -2360,24 +2369,6 @@ static g2cSpecialHandler special_handlers[] =
       { NULL },
        NULL,
       scrolled_window_placement },  
-      
-    { "GtkSeparatorToolItem", "is_important",
-      "\tgtk_tool_item_set_is_important (GTK_TOOL_ITEM (gui->%s), %s);\n",
-      { "name", "is_important", NULL },
-      NULL,
-      NULL },
-      
-    { "GtkSeparatorToolItem", "visible_horizontal",
-      "\tgtk_tool_item_set_visible_horizontal (GTK_TOOL_ITEM (gui->%s), %s);\n",
-      { "name", "visible_horizontal", NULL },
-      NULL,
-      NULL },  
-      
-    { "GtkSeparatorToolItem", "visible_vertical",
-      "\tgtk_tool_item_set_visible_vertical (GTK_TOOL_ITEM (gui->%s), %s);\n",
-      { "name", "visible_vertical", NULL },
-      NULL,
-      NULL }, 
       
 //    { "GtkSpinButton", "max_width_chars",
 //      "\tg_object_set (G_OBJECT (gui->%s), %s, NULL);\n",
@@ -2470,16 +2461,34 @@ static g2cSpecialHandler special_handlers[] =
       NULL },    /*  text_buffer_text */
          
     { "GtkToggleButton", "active",
-      "\tgtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (gui->%s), %s);\n",
+      "\tgtk_toggle_tool_button_set_active (GTK_TOGGLE_BUTTON (gui->%s), %s);\n",
       { "name", "active", NULL, NULL, NULL },
       NULL,
       NULL },  
       
-   { "GtkToolButton", "is_important",
+    { "GtkToggleButton", "draw_indicator",
+      "\tg_object_set(G_OBJECT(gui->%s),\"draw_indicator\", %s,NULL);\n",
+      { "name", "draw_indicator", NULL },
+      NULL,
+      NULL },
+        
+   { "GtkToolItem", "is_important",
       "\tgtk_tool_item_set_is_important (GTK_TOOL_ITEM (gui->%s), %s);\n",
       { "name", "is_important", NULL },
       NULL,
       NULL },
+      
+   { "GtkToolItem", "visible_horizontal",
+      "\tgtk_tool_item_set_visible_horizontal (GTK_TOOL_ITEM (gui->%s), %s);\n",
+      { "name", "visible_horizontal", NULL },
+      NULL,
+      NULL },  
+      
+    { "GtkToolItem", "visible_vertical",
+      "\tgtk_tool_item_set_visible_vertical (GTK_TOOL_ITEM (gui->%s), %s);\n",
+      { "name", "visible_vertical", NULL },
+      NULL,
+      NULL },  
       
    { "GtkToolButton", "icon_name",
       "\tgtk_tool_button_set_icon_name(GTK_TOOL_BUTTON (gui->%s), %s);\n",
@@ -2502,7 +2511,7 @@ static g2cSpecialHandler special_handlers[] =
      NULL},  
      
    { "GtkToolButton", "stock_id",
-      "\tgtk_tool_button_set_icon_name(GTK_TOOL_BUTTON (gui->%s), %s);\n",
+      "\tgtk_tool_button_set_stock_id(GTK_TOOL_BUTTON (gui->%s), %s);\n",
      { "name", "$stock_id", NULL },
      NULL,
      NULL},
@@ -2570,35 +2579,11 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },
       
-    { "GtkToggleToolButton", "visible_horizontal",
-      "\tgtk_tool_item_set_visible_horizontal (GTK_TOOL_ITEM (gui->%s), %s);\n",
-      { "name", "visible_horizontal", NULL },
-      NULL,
-      NULL },  
-      
-    { "GtkToggleToolButton", "visible_vertical",
-      "\tgtk_tool_item_set_visible_vertical (GTK_TOOL_ITEM (gui->%s), %s);\n",
-      { "name", "visible_vertical", NULL },
-      NULL,
-      NULL }, 
-      
     { "GtkToolbar", "toolbar_style",
       NULL,
       { NULL },
       NULL,
-      toolbar_style },  
-
-    { "GtkToolButton", "visible_horizontal",
-      "\tgtk_tool_item_set_visible_horizontal (GTK_TOOL_ITEM (gui->%s), %s);\n",
-      { "name", "visible_horizontal", NULL },
-      NULL,
-      NULL },  
-      
-    { "GtkToolButton", "visible_vertical",
-      "\tgtk_tool_item_set_visible_vertical (GTK_TOOL_ITEM (gui->%s), %s);\n",
-      { "name", "visible_vertical", NULL },
-      NULL,
-      NULL },   
+      toolbar_style },   
 
     { "GtkTreeSelection", "mode",
       NULL,
@@ -2606,12 +2591,12 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       tree_selection_mode }, 
       
-    { "GtkTreeView", "expander_column",
-      "\tgtk_tree_view_set_expander_column(GTK_TREE_VIEW(gui->%s),\n"
-            "\t\t\tGTK_TREE_VIEW_COLUMN(gui->%s));\n",
-      { "name", "expander_column", NULL },
-      NULL,
-      NULL },
+//    { "GtkTreeView", "expander_column",
+//      "\tgtk_tree_view_set_expander_column(GTK_TREE_VIEW(gui->%s),\n"
+//            "\t\t\tGTK_TREE_VIEW_COLUMN(gui->%s));\n",
+//      { "name", "expander_column", NULL },
+//      NULL,
+//      NULL },
       
     { "GtkTreeView", "model",
       "\tgtk_tree_view_set_model(GTK_TREE_VIEW(gui->%s),\n"
@@ -2636,12 +2621,6 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "vadjustment", NULL },
       NULL }, 
       
-    { "GtkWindow", "resize",
-      "\tgtk_window_set_resizable (GTK_WINDOW (gui->%s), %s);\n",
-      { "name", "resize", NULL },
-      NULL,
-      NULL },
-      
     { "GtkTreeViewColumn", "resize",
       "\tgtk_tree_view_column_set_resizable (GTK_TREE_VIEW_COLUMN (gui->%s),\n"
             "\t\t\t%s);\n",
@@ -2660,7 +2639,34 @@ static g2cSpecialHandler special_handlers[] =
             "\t\t\tGTK_SORT_DESCENDING);\n",
       { "name", NULL },
       NULL,
-      NULL },    
+      NULL }, 
+      
+    { "GtkTreeViewColumn", "widget",
+      "\tgtk_tree_view_column_set_widget (GTK_TREE_VIEW_COLUMN (gui->%s),\n"
+            "\t\t\tGTK_WIDGET(gui->%s));\n",
+      { "name","widget", NULL },
+      NULL,
+      NULL },  
+    
+    { "GtkViewport", "hadjustment",
+      "\tgtk_scrollable_set_hadjustment (GTK_SCROLLABLE (gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
+      { "name", "hadjustment", NULL },
+      NULL }, 
+      
+    { "GtkViewport", "vadjustment",
+      "\tgtk_scrollable_set_vadjustment (GTK_SCROLLABLE (gui->%s), GTK_ADJUSTMENT(gui->%s));\n",
+      { "name", "vadjustment", NULL },
+      NULL },     
+      
+    { "GtkViewport", "hscroll_policy",
+      "\tgtk_scrollable_set_hscroll_policy (GTK_SCROLLABLE (gui->%s), GTK_SCROLL_NATURAL);\n",
+      { "name", NULL },
+      NULL },
+      
+    { "GtkViewport", "vscroll_policy",
+      "\tgtk_scrollable_set_vscroll_policy (GTK_SCROLLABLE (gui->%s), GTK_SCROLL_NATURAL);\n",
+      { "name", NULL },
+      NULL },
       
     { "GtkViewport", "shadow_type",
       NULL,
@@ -2692,6 +2698,12 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       NULL },
       
+    { "GtkWindow", "attached_to",  
+         NULL,
+      {  NULL },
+         NULL,
+         window_attached },  
+      
     { "GtkWindow", "default_height",
       "\tg_object_set(G_OBJECT(gui->%s),\"default_height\", %s,NULL);\n",
       { "name", "default_height", NULL },
@@ -2709,18 +2721,30 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "height_request", NULL },
       NULL,
       NULL },
+    
+    { "GtkWindow", "icon",
+      NULL,
+      { NULL },
+      NULL,
+      window_icon },
+      
+    { "GtkWindow", "resize",
+      "\tgtk_window_set_resizable (GTK_WINDOW (gui->%s), %s);\n",
+      { "name", "resize", NULL },
+      NULL,
+      NULL },
+        
+    { "GtkWindow", "transient_for",   /* also applies to dialog classes */
+         NULL,
+      {  NULL },
+         NULL,
+         window_transient },  
       
     { "GtkWindow", "width_request",
       "\tg_object_set(G_OBJECT(gui->%s),\"width_request\", %s,NULL);\n",
       { "name", "width_request", NULL },
       NULL,
       NULL }, 
-
-    { "GtkWindow", "icon",
-      NULL,
-      { NULL },
-      NULL,
-      window_icon },   
       
     { NULL, NULL,
       NULL,
@@ -2830,7 +2854,6 @@ static g2cCommonParam common_params[] =
     {"has_resize_grip", TRUE, NULL, "GtkWindow"},
     {"accel_path", TRUE, NULL, "GtkMenuItem" },
     {"role", TRUE, "char", "GtkWindow" },
-    {"startup_id", TRUE, "char", "GtkWindow" },
     {"attached_to", TRUE, "widget", "GtkWindow" },
     {"show_editor", FALSE, NULL, NULL},
     {"content_type", FALSE, NULL, NULL},
@@ -3054,6 +3077,16 @@ gdouble fsize;
     fprintf( CURRENT_FILE,
             "\tg_object_set(G_OBJECT(gui->%s),\"size-points\", %6.2f, NULL);\n",
             widget->name, fsize);
+}
+
+void font_chooser_level( g2cWidget *widget)
+{
+gchar *level = NULL;
+
+    level = g2c_widget_get_property( widget, "level" );
+    fprintf( CURRENT_FILE,
+            "\tgtk_font_chooser_set_level(GTK_FONT_CHOOSER(gui->%s),%s);\n",
+            widget->name, level);
 }
 
 void view_column_alignment ( g2cWidget *widget )
@@ -3943,36 +3976,17 @@ dialog_type_hint ( g2cWidget *widget )
   g_free( hint ); 
 }
 
-void dialog_transient( g2cWidget *widget )
-{
-gchar *transient = NULL;
-gchar *type_name = NULL;
-    g_assert( NULL != widget ); 
-    transient = g2c_widget_get_property( widget, "transient_for" ); 
-    type_name = g2c_transform_name( CURRENT_PROJECT->main_widget->name, NT_TYPENAME );
-    if ( strcmp( CURRENT_PROJECT->main_widget->name, transient ) == 0 )
-        fprintf( CURRENT_FILE,
-                "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((%s *) owner)->gui->%s));\n",
-                widget->name, type_name, transient);
-    else {
-        fprintf( CURRENT_FILE,
-                "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((%s *) owner)->%sgui->%s));\n",
-                widget->name, type_name, transient, transient);     
-    }
-    g_free(  type_name );
-}
-
 void file_chooser_filter( g2cWidget *widget )
 {
 gchar *filter = NULL;
 gchar *type_name = NULL;
-g2cWidget *top_widget = NULL;
+g2cWidget *main_widget = NULL;
 gboolean sibling = FALSE;
     g_assert( NULL != widget ); 
     filter = g2c_widget_get_property( widget, "filter" ); 
     type_name = g2c_transform_name( CURRENT_PROJECT->main_widget->name, NT_TYPENAME );
-    top_widget = g2c_widget_get_top_parent(widget);
-    sibling = is_in_widget_list(top_widget->associates, filter);
+    main_widget = g2c_widget_get_top_parent(widget);
+    sibling = is_in_widget_list(main_widget->associates, filter);
     
     if ( (strcmp(widget->klass_name,"GtkRecentChooserDialog") == 0) ||
          (strcmp(widget->klass_name,"GtkRecentChooserWidget") == 0) )  {
@@ -3999,6 +4013,45 @@ gboolean sibling = FALSE;
         }
     } else {
         g_message("*** Invalid class for filter: %s\n", widget->name);
+    }
+    g_free(  type_name );    
+}
+
+void file_chooser_preview( g2cWidget *widget )
+{
+gchar *preview = NULL;
+gchar *extra = NULL;
+g2cWidget *main_widget = NULL;
+gchar *type_name = NULL;
+    g_assert( NULL != widget );    
+    main_widget = g2c_widget_get_top_parent(widget);
+    type_name = g2c_transform_name( CURRENT_PROJECT->main_widget->name, NT_TYPENAME );
+    preview = g2c_widget_get_property( widget, "preview_widget" ); 
+    if (preview != NULL) {
+    /*  assumption is that the preview widget has been allocated to the main window  */
+        if ( strcmp( CURRENT_PROJECT->main_widget->name, main_widget->name ) == 0 )  /* is widget in main window?  */
+            fprintf( CURRENT_FILE,
+                    "\tgtk_file_chooser_set_preview_widget (GTK_FILE_CHOOSER(gui->%s), GTK_WIDGET((gui->%s));\n",
+                    widget->name, preview);
+        else {
+            fprintf( CURRENT_FILE,
+                    "\tgtk_file_chooser_set_preview_widget (GTK_FILE_CHOOSER(gui->%s), GTK_WIDGET(((%s *) owner)->gui->%s));\n",
+                    widget->name, type_name, preview);     
+        }
+    }
+    extra = g2c_widget_get_property( widget, "extra_widget" );
+    if (extra != NULL) {
+        /*  assumption is that the extra widget has been allocated to the main window  */
+        if ( strcmp( CURRENT_PROJECT->main_widget->name, main_widget->name ) == 0 ) 
+            fprintf( CURRENT_FILE,
+                    "\tgtk_file_chooser_set_extra_widget (GTK_FILE_CHOOSER(gui->%s), GTK_WIDGET((gui->%s));\n",
+                    widget->name, extra);
+        else {
+            fprintf( CURRENT_FILE,
+                    "\tgtk_file_chooser_set_extra_widget (GTK_FILE_CHOOSER(gui->%s), GTK_WIDGET(((%s *) owner)->gui->%s));\n",
+                    widget->name, type_name, extra);     
+        }
+        
     }
     g_free(  type_name );    
 }
@@ -4575,17 +4628,20 @@ gchar * stock_label = NULL;
 gchar * norm_label = NULL;
 gboolean use_stock = FALSE;
 gboolean use_underline = FALSE;
+gboolean handler_found = FALSE;
 gchar * image = NULL;
 GList *run = NULL;
 gchar *key = NULL;
 g2cAccel *accel = NULL;
 gchar *handler = NULL;
+gchar * accel_group = NULL;
 
    g_assert( NULL != widget );
    stock_label = g2c_widget_get_property( widget, "label" );
    if (stock_label == NULL) return; 
    use_stock = g2c_get_bool(g2c_widget_get_property( widget, "use_stock" ));   
-   use_underline = g2c_get_bool(g2c_widget_get_property( widget, "use_underline" ));    
+   use_underline = g2c_get_bool(g2c_widget_get_property( widget, "use_underline" )); 
+   accel_group = g2c_widget_get_property( widget, "accel_group" ); 
    /*  https://developer.gnome.org/gtk3/stable/GtkImageMenuItem.html#gtk-image-menu-item-set-image  */
    fprintf( CURRENT_FILE,
            "\tgui->%sbox = (GtkBox*) gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);\n",
@@ -4601,14 +4657,18 @@ gchar *handler = NULL;
         fprintf( CURRENT_FILE,
                "\tgtk_container_add (GTK_CONTAINER (gui->%sbox), gui->%simage);\n",
                widget->name, widget->name);
-   } else {   /*  use_stock is FALSE in which case there must be a GtkImage to use  */  
-        fprintf( CURRENT_FILE,
-              "\tgui->%slabel = (GtkLabel*) gtk_accel_label_new (\"%s\");\n",
-              widget->name, stock_label);
-		if ( use_underline == TRUE ) {
+   } else {   /*  use_stock is FALSE in which case there must be a GtkImage to use  */ 
+        if ( use_underline == TRUE ) {
+            fprintf( CURRENT_FILE,
+                "\tgui->%slabel = (GtkLabel*) gtk_label_new_with_mnemonic (\"%s\");\n",  
+                    widget->name,  stock_label);
             fprintf( CURRENT_FILE,
                   "\tgtk_label_set_use_underline(GTK_LABEL(gui->%slabel),TRUE);\n",
                    widget->name );
+        } else {
+            fprintf( CURRENT_FILE,
+                  "\tgui->%slabel = (GtkLabel*) gtk_accel_label_new (\"%s\");\n",
+                  widget->name, stock_label);	
         }	  
         image = g2c_widget_get_property( widget, "image" ); 
         fprintf( CURRENT_FILE,
@@ -4620,17 +4680,30 @@ gchar *handler = NULL;
       accel = (g2cAccel *) run->data; 
       handler = find_signal_handler(widget, accel->signal);
       if (handler == NULL) continue;
-      key = g_strdup_printf( "GDK_KEY_%s", accel->key);     
-      fprintf( CURRENT_FILE,
-           "\tgtk_widget_add_accelerator (GTK_WIDGET (gui->%s), \"%s\", gui->accel_group,\n"
-           "\t                              %s, %s, GTK_ACCEL_VISIBLE);\n", 
-              widget->name, accel->signal, key, accel->modifiers); 
-      // fprintf( CURRENT_FILE,
-           // "\tgtk_accel_label_set_accel_widget (GTK_ACCEL_LABEL (gui->%slabel), GTK_WIDGET (gui->%s));\n",
-              // widget->name,  widget->name);
+      handler_found = TRUE;
+      key = g_strdup_printf( "GDK_KEY_%s", accel->key); 
+      if (accel_group != NULL) {
+         fprintf( CURRENT_FILE,
+             "\tgtk_widget_add_accelerator (GTK_WIDGET (gui->%s), \"%s\", gui->%s,\n"
+             "\t                              %s, %s, GTK_ACCEL_VISIBLE);\n", 
+                widget->name, accel->signal, accel_group,  key, accel->modifiers);  
+      } else {
+        fprintf( CURRENT_FILE,
+             "\tgtk_widget_add_accelerator (GTK_WIDGET (gui->%s), \"%s\", gui->accel_group,\n"
+             "\t                              %s, %s, GTK_ACCEL_VISIBLE);\n", 
+                widget->name, accel->signal, key, accel->modifiers); 
+      }
+      if ( use_underline == FALSE ) {
+        fprintf( CURRENT_FILE,
+             "\tgtk_accel_label_set_accel_widget (GTK_ACCEL_LABEL (gui->%slabel), GTK_WIDGET (gui->%s));\n",
+                widget->name,  widget->name);
+      }
       g_free ( key );              
       run = run->next;
   } 
+   if ((handler_found == FALSE) && (accel_group != NULL)) {
+       g_message("** Accel Group %s supplied for %s,\n\t\t but there is no signal handler\n", accel_group, widget->name);
+   } 
    fprintf( CURRENT_FILE,
            "\tgtk_box_pack_end (GTK_BOX (gui->%sbox), GTK_WIDGET (gui->%slabel), TRUE, TRUE, 0);\n",
             widget->name, widget->name);
@@ -4655,6 +4728,27 @@ gchar *popup = NULL;
             widget->name, popup);
 }
 
+void window_attached ( g2cWidget *widget )
+{
+gchar *attached = NULL;
+g2cWidget *main_widget = NULL;
+gchar *type_name = NULL;
+    g_assert( NULL != widget );
+    if (strcmp(widget->klass_name, "GtkWindow") == 0) return;  /* Only applies to Dialogs  */
+    main_widget = g2c_widget_get_top_parent(widget);
+    attached = g2c_widget_get_property( widget, "attached_to" ); 
+    type_name = g2c_transform_name( CURRENT_PROJECT->main_widget->name, NT_TYPENAME );
+    if ( strcmp( CURRENT_PROJECT->main_widget->name, main_widget->name ) == 0 )
+        fprintf( CURRENT_FILE,
+                "\tgtk_window_set_attached_to (GTK_WINDOW(gui->%s), GTK_WIDGET(gui->%s));\n",
+                widget->name, attached);
+    else {
+        fprintf( CURRENT_FILE,
+                "\tgtk_window_set_attached_to (GTK_WINDOW(gui->%s), GTK_WIDGET(((%s *) owner)->gui->%s));\n",
+                widget->name, type_name, attached);     
+    }
+    g_free(  type_name );    
+}
 
 void window_icon ( g2cWidget *widget )
 {
@@ -4679,6 +4773,26 @@ gchar * file_name3 = NULL;
     fprintf( CURRENT_FILE,
            "\tgtk_window_set_icon(GTK_WINDOW(gui->%s), %s_pixbuf);\n", 
             widget->name, widget->name);
+}
+
+void window_transient( g2cWidget *widget )
+{
+gchar *transient = NULL;
+gchar *type_name = NULL;
+    g_assert( NULL != widget ); 
+    if (strcmp(widget->klass_name, "GtkWindow") == 0) return;  /* Only applies to Dialogs  */
+    transient = g2c_widget_get_property( widget, "transient_for" ); 
+    type_name = g2c_transform_name( CURRENT_PROJECT->main_widget->name, NT_TYPENAME );
+    if ( strcmp( CURRENT_PROJECT->main_widget->name, transient ) == 0 )
+        fprintf( CURRENT_FILE,
+                "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((%s *) owner)->gui->%s));\n",
+                widget->name, type_name, transient);
+    else {
+        fprintf( CURRENT_FILE,
+                "\tgtk_window_set_transient_for (GTK_WINDOW(gui->%s), GTK_WINDOW(((%s *) owner)->%sgui->%s));\n",
+                widget->name, type_name, transient, transient);     
+    }
+    g_free(  type_name );
 }
 
 void entry_primary_pixbuf ( g2cWidget *widget )
@@ -4789,11 +4903,11 @@ gchar * icon_size = NULL;
     icon_size = g2c_widget_get_property( widget, "icon_size" );
     if (icon_size != NULL) {    
        fprintf( CURRENT_FILE,
-           "\tgtk_image_set_from_icon_name(GTK_IMAGE(gui->%s), \"%s\", %s);\n", 
+           "\tgtk_image_set_from_stock(GTK_IMAGE(gui->%s), \"%s\", %s);\n", 
             widget->name, stock_name, icon_size); 
     } else {  // default is Button
        fprintf( CURRENT_FILE,
-           "\tgtk_image_set_from_icon_name(GTK_IMAGE(gui->%s), \"%s\", GTK_ICON_SIZE_BUTTON);\n", 
+           "\tgtk_image_set_from_stock(GTK_IMAGE(gui->%s), \"%s\", GTK_ICON_SIZE_BUTTON);\n", 
             widget->name, stock_name );   
     }
 }
@@ -5176,7 +5290,7 @@ gchar *nsize = NULL;
     if (icon_name != NULL) {
         nsize = make_icon_size_enumeral(strsize);
         fprintf ( CURRENT_FILE,
-                "\tgui->%s = (GtkImage*) gtk_image_new_from_stock(\"%s\", %s);\n",
+                "\tgui->%s = (GtkImage*) gtk_image_new_from_icon_name(\"%s\", %s);\n",
                 widget->name, icon_name, nsize);    /* need to compile with -Wno-deprecated-declarations  */
         return;
     }
@@ -5434,6 +5548,9 @@ gchar *init_action = NULL;
 gchar *action = NULL;
 gchar *enumaction = NULL;
 gchar *title = NULL;
+gchar *dialog = NULL;
+g2cWidget *main_widget = NULL;
+gchar *type_name = NULL;
 
    g_assert( NULL != widget );
    
@@ -5445,15 +5562,32 @@ gchar *title = NULL;
        } else {
           enumaction = make_enumeral ("GTK_FILE_CHOOSER_ACTION", action);
        }
-       title = g2c_widget_get_property( widget, "title" );
-       if (title == NULL) {
+       title  = g2c_widget_get_property( widget, "title" );
+       dialog = g2c_widget_get_property( widget, "dialog" );
+       if (dialog != NULL) {          
+          main_widget = g2c_widget_get_top_parent(widget);
+          type_name = g2c_transform_name( main_widget->name, NT_TYPENAME );
           fprintf( CURRENT_FILE,
-               "\tgui->%s = (GtkFileChooserButton*) gtk_file_chooser_button_new (\"\", %s);\n",
-               widget->name, enumaction ); 
+               "\tgui->%s = (GtkFileChooserButton*) gtk_file_chooser_button_new_with_dialog \n"
+               "\t\t\t(GTK_WIDGET(((%s *) owner)->%sgui->%s));\n",
+               widget->name, type_name, dialog, dialog ); 
+          g_free(  type_name );
+          
+          if (title != NULL) {
+              fprintf( CURRENT_FILE,
+                   "\tgtk_file_chooser_button_set_title (GTK_FILE_CHOOSER_BUTTON(gui->%s), \"%s\");\n",
+                   widget->name, title);   
+          }
        } else {
-          fprintf( CURRENT_FILE,
-               "\tgui->%s = (GtkFileChooserButton*) gtk_file_chooser_button_new (\"%s\", %s);\n",
-               widget->name, title, enumaction );
+        if (title == NULL) {
+           fprintf( CURRENT_FILE,
+                "\tgui->%s = (GtkFileChooserButton*) gtk_file_chooser_button_new (\"\", %s);\n",
+                widget->name, enumaction ); 
+        } else {
+           fprintf( CURRENT_FILE,
+                "\tgui->%s = (GtkFileChooserButton*) gtk_file_chooser_button_new (\"%s\", %s);\n",
+                widget->name, title, enumaction );
+        }
        }
        g_free ( enumaction );
    }
@@ -6392,9 +6526,11 @@ g2c_widget_new( gchar *class_name )
       } else if (strcmp( widget->klass_name, "GtkToolbar" ) == 0) {  widget->klass = GTK_TYPE_TOOLBAR;
       } else if (strcmp( widget->klass_name, "GtkInfoBar" ) == 0) {  widget->klass = GTK_TYPE_INFO_BAR;
       } else if (strcmp( widget->klass_name, "GtkHeaderBar" ) == 0) {  widget->klass = GTK_TYPE_HEADER_BAR;
+      } else if (strcmp( widget->klass_name, "GtkToolItem" ) == 0) {  widget->klass = GTK_TYPE_TOOL_ITEM;
       } else if (strcmp( widget->klass_name, "GtkToolButton" ) == 0) {  widget->klass = GTK_TYPE_TOOL_BUTTON;
       } else if (strcmp( widget->klass_name, "GtkToolItemGroup" ) == 0) {  widget->klass = GTK_TYPE_TOOL_ITEM_GROUP;
       } else if (strcmp( widget->klass_name, "GtkMenuToolButton" ) == 0) {  widget->klass = GTK_TYPE_MENU_TOOL_BUTTON;
+      } else if (strcmp( widget->klass_name, "GtkToggleToolButton" ) == 0) {  widget->klass = GTK_TYPE_TOGGLE_TOOL_BUTTON;
       } else if (strcmp( widget->klass_name, "GtkRadioToolButton" ) == 0) {  widget->klass = GTK_TYPE_RADIO_TOOL_BUTTON;
       } else if (strcmp( widget->klass_name, "GtkTreeView" ) == 0) {  widget->klass = GTK_TYPE_TREE_VIEW;
       } else if (strcmp( widget->klass_name, "GtkTreeSelection" ) == 0) {  widget->klass = GTK_TYPE_TREE_SELECTION;
@@ -6532,6 +6668,7 @@ g2c_widget_new( gchar *class_name )
       else if ( strcmp( widget->klass_name, "GtkLinkButton" ) == 0 )  widget->klass = GTK_TYPE_LINK_BUTTON;
       else if ( strcmp( widget->klass_name, "GtkVolumeButton" ) == 0 )  widget->klass = GTK_TYPE_VOLUME_BUTTON;
       else if ( strcmp( widget->klass_name, "GtkFixed" ) == 0 ) widget->klass = GTK_TYPE_FIXED;
+      else if ( strcmp( widget->klass_name, "GtkExpander" ) == 0 ) widget->klass = GTK_TYPE_EXPANDER;
       else if ( strcmp( widget->klass_name, "GtkSeparator" ) == 0 ) widget->klass = GTK_TYPE_SEPARATOR;
       else if ( strcmp( widget->klass_name, "GtkStack" ) == 0 ) widget->klass = GTK_TYPE_STACK;
       else if ( strcmp( widget->klass_name, "GtkStackSwitcher" ) == 0 ) widget->klass = GTK_TYPE_STACK_SWITCHER;
@@ -7224,6 +7361,15 @@ g2c_widget_create_closure_handler( g2cSignal * signal,
     return;
   else
     add_to_signal_list (signal->handler);
+  
+  if ( NULL != CURRENT_SOURCE_PARSER )
+    {
+      if ( g2c_file_parser_item_exists( CURRENT_SOURCE_PARSER, signal->handler ) ) {          
+        return;
+      } else {
+        g_message("  Handler '%s' is new. Included in generated file.\n", signal->handler); 
+      }
+    }
 
   extract_signal(&event, &keystr, &modifierstr, signal->name);
   
@@ -7250,7 +7396,7 @@ g2c_widget_create_closure_handler( g2cSignal * signal,
            window_class,  /* Window1 */
            //window->name,  /* window1 */
            window_class   /* Window1 */           
-         );                                   
+         ); 
   g_free( keystr );
   g_free( modifierstr );                      
 }
@@ -7314,7 +7460,7 @@ g2c_widget_create_signal_handler_cb( g2cDoc *doc, g2cSignal * signal,
       if ( g2c_file_parser_item_exists( CURRENT_SOURCE_PARSER, signal->handler ) ) {          
         goto finish;
       } else {
-        g_print("  Handler '%s' is new. Included in generated file.\n", signal->handler); 
+        g_message("  Handler '%s' is new. Included in generated file.\n", signal->handler); 
       }
     }
 

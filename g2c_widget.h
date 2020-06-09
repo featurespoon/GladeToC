@@ -30,6 +30,7 @@ typedef struct tag_g2cBoxPacking
     gboolean expand;
     gboolean fill;
     guint    padding;
+    gboolean homogeneous;
     g2cPackDirection pack_type;
   }
 g2cBoxPacking;
@@ -142,12 +143,21 @@ typedef struct tag_g2cRequires
 }
 g2cRequires;
 
-typedef struct tag_g2cDialog_Requires
+typedef struct tag_g2cTopRegister
 {
-    gchar *required;
-    gchar *requiring;
-}
-g2cDialog_Requires;
+    g2cWidget *widget;
+    gchar *name;
+    gboolean bmain;
+    guint  level;
+} 
+g2cTopRegister;
+
+//typedef struct tag_g2cDialog_Requires
+//{
+//    gchar *required;
+//    gchar *requiring;
+//}
+//g2cDialog_Requires;
 
 typedef struct tag_g2cColumn
 {

@@ -32,6 +32,9 @@ set(EXE_OPTIONS "-mwindows")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${EXE_OPTIONS}")
 add_definitions( -DWIN32 )
 ENDIF (DEFINED WIN32)
+IF (DEFINED SOURCE_DEBUG)
+add_definitions( -DSOURCE_DEBUG )
+ENDIF (DEFINED SOURCE_DEBUG)
 SET(CORE g2c.c
          g2c_accel.c
 		 g2c_doc.c

@@ -814,7 +814,11 @@ g2cWidget *dialog;
         }        
         run = g_list_next(run);
     }
-    return NULL;
+    if (strcmp(CURRENT_PROJECT->main_widget->name, name) == 0) {
+        return CURRENT_PROJECT->main_widget;
+    } else {
+        return NULL;
+    }
 }
 
 void
@@ -835,19 +839,40 @@ register_free(g2cRegister *reg)
     g_free(reg);
 }
 
-void 
-dialog_requires_add(GList **top_list, gchar *requiring, gchar *required)
+GList *
+topregister_add(GList *topregster, g2cWidget *widget, gboolean bmain)
 {
-g2cDialog_Requires *req = g_new0( g2cDialog_Requires, 1);
-    
-    req->requiring = g_strdup(requiring);
-    req->required = g_strdup(required);
-    *top_list = g_list_append(*top_list, (gpointer) req);
-    //g_message ("dialog %s requires %s \n", requiring, required);
+g2cTopRegister *reg =  g_new0( g2cTopRegister, 1 ); 
+    reg->name = g_strdup(widget->name);
+    reg->widget = widget;
+    reg->level = 0;
+    reg->bmain = bmain;    
+    //g_message ("top register %s\n", name);
+    return g_list_append(topregster, (gpointer) reg);
 }
 
 void
-dialog_require_free(g2cDialog_Requires *require)
+topregister_free(g2cTopRegister *reg)
+{
+    g_free(reg->name);
+    g_free(reg);
+}
+
+void 
+top_requires_add(GList **top_list, gchar *requiring, gchar *required)
+{
+g2cRequires *req = g_new0( g2cRequires, 1);
+    
+    req->main = NULL;
+    req->requiring = g_strdup(requiring);
+    req->required = g_strdup(required);
+    req->used = 0;
+    *top_list = g_list_append(*top_list, (gpointer) req);
+    //g_message ("top %s requires %s \n", requiring, required);
+}
+
+void
+top_require_free(g2cRequires *require)
 {
     g_free(require->requiring);
     g_free(require->required);
@@ -855,51 +880,116 @@ dialog_require_free(g2cDialog_Requires *require)
     return;
 }
 
-void sort_top_list(GList **top_list)
+GList *
+top_copy_requires(GList *requires)
 {
-g2cDialog_Requires *reqx, *reqy;
-GList *run, *x, *y;
-gpointer temp;
+GList *requires_item;
+g2cRequires *require;
+GList *new_list = NULL;
+g2cRequires *req;
+
+    requires_item = g_list_first(requires);
+    while (requires_item != NULL) {
+        require = (g2cRequires *) requires_item->data;         
+        req = g_new0( g2cRequires, 1);
+        req->main = NULL;
+        req->requiring = g_strdup(require->requiring);
+        req->required = g_strdup(require->required);
+        req->used = 0;            
+        new_list = g_list_append(new_list,  (gpointer) req);          
+        requires_item = g_list_next( requires_item );    
+    }
+    return new_list;
+}
+
+gboolean sort_top_list(GList **top_reg, GList **top_list)
+{
+g2cRequires *reqx;
+GList *run;
+g2cTopRegister *reg_requiring = NULL;
+g2cTopRegister *reg_required = NULL;
+
 gboolean bchange = FALSE;
 guint count =0;
-
-    x = g_list_first(*top_list);
+ 
+    if (top_detect_cycles(*top_list)) {
+        return FALSE;
+    }
     do {
+        run = g_list_first(*top_list);
         bchange = FALSE;
-        while (x != NULL) {
-            reqx = (g2cDialog_Requires *) x->data;
-            y = x; //   g_list_first(*top_list); 
-            y = g_list_next(y);
-            while (y != NULL) {
-                reqy = (g2cDialog_Requires *) y->data;
-                if (strcmp(reqy->requiring, reqx->required) == 0) {
-                   temp = x->data;
-                   x->data = y->data;
-                   y->data = temp;
-                   bchange = TRUE;
-                   g_message("Rearranged order of dialogue for %s\n", reqx->requiring);
-                }          
-                y = g_list_next(y);
+        while (run != NULL) {           
+            reqx = (g2cRequires *) run->data; 
+            
+            reg_requiring = find_top_widget_by_name(*top_reg, reqx->requiring);
+            if (reg_requiring == NULL) {
+                g_message("** widget %s requiring %s not found in sort***\n", reqx->requiring, reqx->required);
+                return FALSE;
             }
-            x = g_list_next(x);
+            reg_required = find_top_widget_by_name(*top_reg, reqx->required);
+            if (reg_required == NULL) {
+                g_message("** widget %s required by %s not found in sort***\n", reqx->required, reqx->requiring);
+                return FALSE;
+            }
+            if (reg_requiring->level <= reg_required->level) {
+                reg_requiring->level = reg_required->level + 1;  // promote requiring widget
+                //g_message("Widget %s promoted to level %d by %s\n", reqx->requiring, reg_requiring->level, reqx->required);
+                bchange = TRUE;
+            }
+            run = g_list_next(run);
         }
         count++;
         if (count > 10) {
-            g_message("dialog transient requirement iterations limit exceeded\n");
+            g_message("Unable to complete sort: probable cycle\n");
             break;
         }
     } while (bchange == TRUE);
-
+    return TRUE;
 }
+
+gboolean
+top_detect_cycles(GList *top_requires_list)
+{
+GList *requires_item; 
+g2cRequires *require;
+GList *requires_copy = NULL;
+GList *detect_copy = NULL;
+GList *chain = NULL;
+gchar *cycle;
+
+    detect_copy = top_copy_requires( top_requires_list );
+    requires_copy = top_copy_requires( top_requires_list );
+    requires_item = g_list_first( detect_copy );
+    while ( NULL != requires_item ) {
+        require = (g2cRequires *) requires_item->data; 
+        chain = g_list_append(chain, (gpointer) g_strdup(require->requiring));
+        chain = g_list_append(chain, (gpointer) g_strdup(require->required));
+        //g_message("build cycle chain from %s requires %s\n", require->requiring, require->required);
+        cycle = build_cycle(&chain, detect_copy, requires_copy, require->required);
+        if (cycle != NULL) {
+            //g_message("   Cycle detected containing %s. \n", cycle);            
+            return TRUE;
+        }
+        //print_out_chain(chain);
+        delete_chain( chain ); 
+        chain = NULL;
+        //g_message("End of chain\n");
+        requires_item = g_list_next( requires_item );
+    }
+    g_list_free_full(detect_copy, free_requires);
+    g_list_free_full(requires_copy, free_requires);
+    return FALSE;
+}
+
 
 gboolean is_dialogue_in_top_list(GList *top_list, gchar *name)
 {
 GList *run;  
-g2cDialog_Requires *req;
+g2cRequires *req;
 
     run = g_list_first(top_list);
     while (run != NULL)   {
-        req = (g2cDialog_Requires *) run->data;
+        req = (g2cRequires *) run->data;
         if (strcmp(req->requiring, name) == 0) {
             return TRUE;
         }
@@ -984,6 +1074,22 @@ guint max_level = 0;
     return max_level;
 }
 
+guint
+get_max_top_register_level(GList *register_list)
+{
+g2cTopRegister *reg;
+GList *run = NULL;
+guint max_level = 0;
+
+    run = g_list_first( register_list );
+    while ( NULL != run ) {
+        reg = (g2cTopRegister *) run->data;        
+        if ( reg->level > max_level ) max_level = reg->level;
+        run = g_list_next( run );   
+    } 
+    return max_level;
+}
+
 g2cRegister *
 find_widget_by_name(GList *register_list, gchar* name)
 {
@@ -993,6 +1099,23 @@ g2cRegister *reg;
     register_item = g_list_first( register_list );
     while ( NULL != register_item ) {
         reg = (g2cRegister *) register_item->data;        
+        if ( strcmp(reg->name,name) == 0 ) {
+            return reg;
+        }
+        register_item = g_list_next( register_item );   
+    } 
+    return NULL;    
+}
+
+g2cTopRegister *
+find_top_widget_by_name(GList *register_list, gchar* name)
+{
+GList *register_item;
+g2cTopRegister *reg;
+
+    register_item = g_list_first( register_list );
+    while ( NULL != register_item ) {
+        reg = (g2cTopRegister *) register_item->data;        
         if ( strcmp(reg->name,name) == 0 ) {
             return reg;
         }
@@ -1346,7 +1469,7 @@ void free_requires(gpointer data)
 }
 
 gchar *
-build_cycle(GList **chain, g2cWidget *main, GList *detect_copy, GList *requires_copy, gchar *next)
+build_cycle(GList **chain, GList *detect_copy, GList *requires_copy, gchar *next)
 {
 gchar *required = NULL; 
 gchar *requiring = NULL;
@@ -1365,7 +1488,7 @@ gchar *cycle;
         if (bFound == TRUE) {
             //this is a cycle:   remove require from main->requires
             print_out_chain(*chain);
-            g_message("Cycle detected: suggest removing requirement of widget %s for widget %s\n", requiring, required);
+            g_message("Cycle detected: suggest removing requirement of\n\t\twidget %s for widget %s\n", requiring, required);
             //old_requires = main->requires;
             //main->requires = list_remove(main->requires, requiring, required); 
             //g_list_free_full(old_requires, free_requires);
@@ -1420,7 +1543,7 @@ gchar *cycle;
         chain = g_list_append(chain, (gpointer) g_strdup(require->requiring));
         chain = g_list_append(chain, (gpointer) g_strdup(require->required));
         //g_message("build cycle chain from %s requires %s\n", require->requiring, require->required);
-        cycle = build_cycle(&chain, main, detect_copy, requires_copy, require->required);
+        cycle = build_cycle(&chain, detect_copy, requires_copy, require->required);
         if (cycle != NULL) {
             //g_message("   Cycle detected containing %s. \n", cycle);            
             return FALSE;
@@ -1665,14 +1788,9 @@ g2cProp *prop;
 //            g_message("menu name property found for %s\n", widget->klass_name );
 //        }
       }
-//      if (strcmp(prop->key,"group") == 0) {      
-//        requires_add(global, main, widget->name, prop->value);
-//        if ((strcmp(widget->klass_name, "GtkRadioButton") != 0) &&
-//            (strcmp(widget->klass_name, "GtkRadioMenuItem") != 0) &&
-//            (strcmp(widget->klass_name, "GtkRadioToolButton") != 0) ) {
-//            g_message("group property found for %s\n", widget->klass_name );
-//        }
-//      }
+      // property "group" is not being monitored because when a radiobutton, radiomenuitem
+      // or radiotoolbutton is being created it may refer to an as yet undeclared radiobutton, 
+      // radiomenuitem or radiotoolbutton without raising an error or warning.
       if (strcmp(prop->key,"buffer") == 0) {      
         requires_add(global, main, widget->name, prop->value);
         if ((strcmp(widget->klass_name, "GtkEntry") != 0) &&
@@ -1772,37 +1890,37 @@ g2cProp *prop;
       }
       if (strcmp(prop->key,"transient_for") == 0) {      
         requires_add(global, main, widget->name, prop->value);
-        g_message("transient for property found for %s\n", widget->klass_name );
-      }
-       if (strcmp(prop->key,"expander_column") == 0) {      
-        requires_add(global, main, widget->name, prop->value);
-        if (strcmp(widget->klass_name, "GtkTreeView") != 0) {
-            g_message("expander_column name property found for %s\n", widget->klass_name );
-        } 
+        //g_message("transient for property found for %s\n", widget->klass_name );
       }
       if (strcmp(prop->key,"popup") == 0) {      
         requires_add(global, main, widget->name, prop->value);
-        g_message("popup property found for %s\n", widget->klass_name );
+        //g_message("popup property found for %s\n", widget->klass_name );
       }
       if (strcmp(prop->key,"relative_to") == 0) {      
          requires_add(global, main, widget->name, prop->value);
-         g_message("relative_to property found for %s\n", widget->klass_name );
+         //g_message("relative_to property found for %s\n", widget->klass_name );
       }
       if (strcmp(prop->key,"accel_widget") == 0) {      
          requires_add(global, main, widget->name, prop->value);
-         g_message("accel_widget property found for %s\n", widget->klass_name );
+         //g_message("accel_widget property found for %s\n", widget->klass_name );
       }
       if (strcmp(prop->key,"align_widget") == 0) {      
          requires_add(global, main, widget->name, prop->value);
-         g_message("align_widget property found for %s\n", widget->klass_name );
+         //g_message("align_widget property found for %s\n", widget->klass_name );
       }
       if (strcmp(prop->key,"child_model") == 0) {      
          requires_add(global, main, widget->name, prop->value);
-         g_message("child_model property found for %s\n", widget->klass_name );
+         //g_message("child_model property found for %s\n", widget->klass_name );
       }
       if (strcmp(prop->key,"tag_table") == 0) {      
          requires_add(global, main, widget->name, prop->value);
-         g_message("tag_table property found for %s\n", widget->klass_name );
+         //g_message("tag_table property found for %s\n", widget->klass_name );
+      }
+      if (strcmp(prop->key,"dialog") == 0) {      
+         requires_add(global, main, widget->name, prop->value);
+         g2cWidget *top_widget = g2c_widget_get_top_parent(widget);
+         requires_add(global, main, top_widget->name, prop->value);
+         //g_message("dialog property found for %s in %s\n", widget->klass_name, top_widget->name );
       }
       item = item->next;
   }   /*  end while  */
