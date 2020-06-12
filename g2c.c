@@ -40,7 +40,8 @@ int g2c_common(gchar* program, gchar* glade_file, gchar* gen_dir, gboolean gen_c
 #endif
 {
 g2cDoc *doc        = NULL;
-int     handler_id;
+guint     handler_id;
+int       iret = 0;
 
  handler_id = g_log_set_handler (NULL,
 				  G_LOG_LEVEL_MESSAGE | G_LOG_LEVEL_WARNING | G_LOG_LEVEL_CRITICAL,
@@ -76,13 +77,13 @@ if (program == NULL) {
   g2c_doc_parse( doc );  
   
   /* Write out to files */
-  g2c_doc_output( doc );
+  iret = g2c_doc_output( doc );
   
   /* Free the document */
   g2c_doc_destroy ( doc );  
-
-  g_log_remove_handler (NULL, handler_id);
-
-  return 0;
+  
+  //g_log_remove_handler (NULL, handler_id);   /*  crashes  */
+  
+  return iret;
 }
 

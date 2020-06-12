@@ -222,7 +222,7 @@ GString * Gprefix = NULL;
     str[0] = g_ascii_toupper(str[0]);
     str =  g_strdelimit( str, "-", ' ' );
     g_string_free(Glabel, TRUE);
-    g_string_free(Gprefix, TRUE);
+    g_string_free(Gprefix, TRUE);    
     return str;
 }
 
@@ -242,6 +242,7 @@ guint i;
      if (parts[1] == NULL) {
          *keystr = g_strdup("");
          *modifierstr = g_strdup("");
+         g_strfreev( parts );
          return;
      }
      g_assert(strlen(parts[1]) == 0);
@@ -252,6 +253,7 @@ guint i;
         g_message("%s does not have a valid keystroke.\n", name);
         *keystr = g_strdup("");
         *modifierstr = g_strdup("");
+        g_strfreev( parts );
         return;
     }
     fragments = g_strsplit(acceler, ">", -1);
@@ -330,6 +332,7 @@ gchar *
 g2c_transform_name( gchar *name, NameTransform transform )
 {
   gchar   *result   = NULL;
+  gchar   *concat   = NULL;
   gchar  **parts    = NULL;
   gint     i        = 0;
   gint     j        = 0;
@@ -339,13 +342,15 @@ g2c_transform_name( gchar *name, NameTransform transform )
   switch( transform )
     {
     case NT_GUI:
-      result = g_strconcat( name, "_gui.h", NULL );
-      g_utf8_strup( result , strlen(result));
+      concat = g_strconcat( name, "_gui.h", NULL );
+      result = g_utf8_strup( concat , strlen(concat));
+      g_free( concat );
       result = g_strdelimit( result, ".", '_' );
       break;
     case NT_STANDARD:
-      result = g_strconcat( name, ".h", NULL );
-      g_utf8_strup( result, strlen(result) );
+      concat = g_strconcat( name, ".h", NULL );
+      result = g_utf8_strup( concat, strlen(concat) );
+      g_free( concat );
       result = g_strdelimit( result, ".", '_' );
       break;
     case NT_TYPENAME:
@@ -558,7 +563,11 @@ round_float(gchar * value)
 gchar *
 make_enumeral(gchar * prefix, gchar * value)
 {
-    return g_strconcat( prefix, "_", g_strdelimit(g_utf8_strup (value, strlen(value) ),":-", '_' ), NULL );
+gchar *upcase   = g_utf8_strup (value, strlen(value));
+gchar *enumeral = g_strconcat( prefix, "_", g_strdelimit(upcase, ":-", '_' ), NULL );
+
+    g_free( upcase );
+    return enumeral;  /* caller must free */
 }
 
 void
@@ -858,6 +867,18 @@ topregister_free(g2cTopRegister *reg)
     g_free(reg);
 }
 
+void
+free_top_register(gpointer data)
+{
+    topregister_free((g2cTopRegister *) data);
+}
+
+void
+topregister_destroy(GList* topregster)
+{
+    g_list_free_full(topregster, free_top_register);
+}
+
 void 
 top_requires_add(GList **top_list, gchar *requiring, gchar *required)
 {
@@ -900,6 +921,12 @@ g2cRequires *req;
         requires_item = g_list_next( requires_item );    
     }
     return new_list;
+}
+
+void 
+top_requires_destroy(GList *requires)
+{
+    g_list_free_full(requires, free_requires);
 }
 
 gboolean sort_top_list(GList **top_reg, GList **top_list)
@@ -1210,7 +1237,7 @@ GList *associate;
 g2cWidget *orphan; 
 GList *lreq;
 g2cRequires *req;
-g2cWidget *main;   /*  top-level window or dialog */
+g2cWidget *main_widget;   /*  top-level window or dialog */
 gboolean allocated = FALSE;
 
     associate = g_list_first( associates );
@@ -1221,11 +1248,11 @@ gboolean allocated = FALSE;
         while (lreq != NULL) {
             req = (g2cRequires *) lreq->data;
             if (strcmp(orphan->name, req->required) == 0)  {
-                main = req->main;
+                main_widget = req->main;
                 //  is main allocated or global or in the dialog_widgets? If not, skip
-                if ( (is_widget_top_level(global, main->name)  == TRUE)  ||
-                     (is_widget_allocated(global, main)  == TRUE) ) {
-                    allocate(global, main, orphan);                     
+                if ( (is_widget_top_level(global, main_widget->name)  == TRUE)  ||
+                     (is_widget_allocated(global, main_widget)  == TRUE) ) {
+                    allocate(global, main_widget, orphan);                     
                     allocated = TRUE;
                     break;
                 }
@@ -1245,7 +1272,7 @@ gboolean allocated = FALSE;
 /*   The requires list has also been set up by scan_widgets_for_register  */
 /*     which calls scan_properties_for_requires and scan_packing_for_requires */
 void
-analyse_requirements(g2cWidget *global, g2cWidget *main)
+analyse_requirements(g2cWidget *global, g2cWidget *main_widget)
 {
 guint Level = 1;
 //GList *reg_list;
@@ -1257,17 +1284,17 @@ guint max_level;
 GList *popup_item;
 g2cWidget *popup_widget;
 
-    detect_cycles(global, main);  // and if necessary remove one requires to break the cycle
+    detect_cycles(global, main_widget);  // and if necessary remove one requires to break the cycle
     
-    register_list = g_list_first( main->regster );
+    register_list = g_list_first( main_widget->regster );
     reg = (g2cRegister *) register_list->data;
     current = reg->name;
     reg->level = Level;
     
-    popup_item = g_list_first(main->popups);
+    popup_item = g_list_first(main_widget->popups);
     while (popup_item != NULL) {
         popup_widget = (g2cWidget *) popup_item->data;        
-        reg = find_widget_by_name( main->regster, popup_widget->name );
+        reg = find_widget_by_name( main_widget->regster, popup_widget->name );
         reg->level = 1;
         popup_item = g_list_next( popup_item );
     }
@@ -1276,16 +1303,16 @@ g2cWidget *popup_widget;
 
     /*  scan requires list for requires entries where current is the required widget  */
     
-    //scan_requires_list(main, current, Level);
-    max_level = get_max_register_level(main);
+    //scan_requires_list(main_widget, current, Level);
+    max_level = get_max_register_level(main_widget);
     do {
-      build_next_level(global, main, Level, &result);
+      build_next_level(global, main_widget, Level, &result);
       Level++;
     } while (result > 0);
 
 }
 /*  used  */
-void build_next_level(g2cWidget *global, g2cWidget *main, guint level, guint *result)
+void build_next_level(g2cWidget *global, g2cWidget *main_widget, guint level, guint *result)
 {
 guint next_level = level + 1; 
 GList *layer_list = NULL;
@@ -1303,7 +1330,7 @@ guint reglevel;
 
     *result = 0;
     // Build the layer list for current level
-    register_list =  g_list_first( main->regster );
+    register_list =  g_list_first( main_widget->regster );
     while ( NULL != register_list ) {
         reg = (g2cRegister *) register_list->data;
         reglevel = reg->level;
@@ -1316,11 +1343,11 @@ guint reglevel;
     requires_list = g_list_first( global->requires );
     while ( NULL != requires_list ) {
         require = (g2cRequires *) requires_list->data; 
-        if (require->main == main){
+        if (require->main == main_widget){
             if (require->used < 10) {
                 bFound = find_in_layer(layer_list, require->required);
                 if (bFound == TRUE) {
-                    returned_level = set_widget_level(main, require->requiring, next_level);
+                    returned_level = set_widget_level(main_widget, require->requiring, next_level);
                     require->used++;               
                     if (returned_level > 0) {                
                         if (returned_level < next_level) {
@@ -1342,17 +1369,27 @@ guint reglevel;
         while ( NULL != layer_item2 ) {
             layer_name2 = (gchar *) layer_item2->data;
             if (strcmp(layer_name1,layer_name2) != 0) {
-                bFound = find_required(global, main, layer_name1, layer_name2);
+                bFound = find_required(global, main_widget, layer_name1, layer_name2);
                 if (bFound == TRUE) {
                     // demote layer_name1 which requires layer_name2
-                    set_widget_level(main, layer_name1, next_level);                    
+                    set_widget_level(main_widget, layer_name1, next_level);                    
                 }
             }
             layer_item2 = g_list_next( layer_item2 );
         }        
         layer_item1 = g_list_next( layer_item1 );
     }
+    /*  free layer list */
+    //g_list_free_full( layer_list, free_layer_name );
+    g_list_free( layer_list );
 }
+
+void 
+free_layer_name(gpointer data)
+{
+    g_free( (gchar *) data);
+}
+
 /*  not used */
 /*  create a new list of requires omitting any require matching  
     the supplied required and requiring */
@@ -1487,6 +1524,7 @@ gchar *cycle;
         bFound = check_list_contains(chain, required);
         if (bFound == TRUE) {
             //this is a cycle:   remove require from main->requires
+            g_message("chain: %s %s\n", required, requiring);
             print_out_chain(*chain);
             g_message("Cycle detected: suggest removing requirement of\n\t\twidget %s for widget %s\n", requiring, required);
             //old_requires = main->requires;
@@ -1499,10 +1537,12 @@ gchar *cycle;
         require_free(require);
         require = find_linked_require(requires_copy, required);
     };
+    if (requiring != NULL) g_free( requiring );
+    if (required != NULL) g_free( required );
     return NULL;
 }
 /*  Copy the requires items only for the supplied top_window/dialog */
-GList *copy_requires(g2cWidget *main, GList *requires)
+GList *copy_requires(g2cWidget *main_widget, GList *requires)
 {
 GList *requires_item;
 g2cRequires *require;
@@ -1512,7 +1552,7 @@ g2cRequires *req;
     requires_item = g_list_first(requires);
     while (requires_item != NULL) {
         require = (g2cRequires *) requires_item->data; 
-        if (strcmp(require->main->name, main->name) == 0) {
+        if (strcmp(require->main->name, main_widget->name) == 0) {
             req = g_new0( g2cRequires, 1);
             req->main = require->main;
             req->requiring = g_strdup(require->requiring);
@@ -1545,7 +1585,8 @@ gchar *cycle;
         //g_message("build cycle chain from %s requires %s\n", require->requiring, require->required);
         cycle = build_cycle(&chain, detect_copy, requires_copy, require->required);
         if (cycle != NULL) {
-            //g_message("   Cycle detected containing %s. \n", cycle);            
+            //g_message("   Cycle detected containing %s. \n", cycle);  
+            g_free( cycle );
             return FALSE;
         }
         //print_out_chain(chain);

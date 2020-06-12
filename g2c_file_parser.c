@@ -53,8 +53,8 @@ g2c_file_parser_add_file(g2cFileParser *parser, const gchar *file_name, FileType
   g_assert (NULL != parser);  
   
   xfile_name = g_strdelimit(g_strdup(file_name), "\\", '/' );
+  if (  NULL != parser->file_name ) g_free( parser->file_name );
   parser->file_name = g_strdup( xfile_name );
-  //g_message("parser file name: %s\n", parser->file_name);
   parser->file_type = file_type;
   
   parse_file( parser );
@@ -72,6 +72,7 @@ g2c_file_parser_destroy( g2cFileParser *parser )
   g_list_foreach (parser->items,
                   g2c_list_element_free_cb,
                   NULL);
+  g_list_free( parser->items );
 
   g_free (parser);
 }
@@ -259,6 +260,7 @@ parse_source_file( g2cFileParser *parser )
   FILE   *tag_file = NULL;
   gchar  *cmd      = NULL;
   gchar  *item     = g_malloc0( 1024 );
+  gchar  *quote_filename = NULL;
   gchar **line     = NULL;
   gchar *ret  = NULL;
   gint rstatus = 0;
@@ -267,14 +269,14 @@ parse_source_file( g2cFileParser *parser )
 
   /* Create the command */
   
+  quote_filename = g_shell_quote(parser->file_name);
 #ifdef WIN32
-  cmd = g_strdup_printf( "C:/msys64/usr/bin/ctags -x --sort=no %s", g_shell_quote(parser->file_name) );
+  cmd = g_strdup_printf( "C:/msys64/usr/bin/ctags -x --sort=no %s", quote_filename );
 #else
-  cmd = g_strdup_printf( "ctags -x  %s 2> /dev/null", g_shell_quote(parser->file_name) );
-#endif  
+  cmd = g_strdup_printf( "ctags -x  %s 2> /dev/null", quote_filename );
+#endif   
+  g_free( quote_filename );
   
-  //g_message("Command file: %s\n", cmd);
-
   tag_file = popen( cmd, "r" );
 
   g_free( cmd );
@@ -299,7 +301,6 @@ parse_source_file( g2cFileParser *parser )
       if((line[0] != NULL) && (line[0][0] != '!'))
 	{
 	  parser->items = g_list_append( parser->items, g_strdup( line[0] ) );
-          //g_message("Handler %s found in file\n", line[0] );
 	}
 
       memset (item, 0, 1024);

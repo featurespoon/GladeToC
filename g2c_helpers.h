@@ -188,6 +188,12 @@ void
 topregister_free(g2cTopRegister *reg);
 
 void
+free_top_register(gpointer data);
+
+void
+topregister_destroy(GList* topregster);
+
+void
 requires_add(g2cWidget *main, g2cWidget *widget, gchar *requires, gchar *required);
 
 g2cRequires *
@@ -210,6 +216,9 @@ top_require_free(g2cRequires *require);
 
 GList *
 top_copy_requires(GList *requires);
+
+void 
+top_requires_destroy(GList *requires);
 
 gboolean 
 sort_top_list(GList **top_list, GList **top_requires_list);
@@ -267,6 +276,9 @@ scan_requires_list(g2cWidget *main, gchar* current, gint level);
 
 void 
 build_next_level(g2cWidget *global, g2cWidget *main, guint level, guint *result);
+
+void 
+free_layer_name(gpointer data);
 
 gboolean
 find_in_layer(GList *layer_list, gchar *required);

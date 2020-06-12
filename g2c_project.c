@@ -33,8 +33,9 @@ g2c_project_new( void )
 
   allocs = 0;
 
-  project->properties = g_hash_table_new( g_str_hash,
-                                          g_str_equal );
+  //project->properties = g_hash_table_new( g_str_hash,
+  //                                        g_str_equal );
+  project->properties = NULL;
 
   project->top_level_widgets    = NULL;
   project->dialogue_widgets     = NULL;
@@ -65,6 +66,8 @@ g2c_project_destroy( g2cProject *project )
   
   g_list_free( project->top_level_widgets );
   
+  g_list_free( project->dialogue_widgets );
+  
   if( NULL != project->name              ) g_free( project->name );
   if( NULL != project->program_name      ) g_free( project->program_name );
   if( NULL != project->directory         ) g_free( project->directory );  
@@ -73,7 +76,7 @@ g2c_project_destroy( g2cProject *project )
   if( NULL != project->pixmaps_directory ) g_free( project->pixmaps_directory );
  
   g_free( project );
-
+  
   if (allocs != 0)
     g_message ("%d widgets were not freed\n", allocs);
 }
@@ -119,21 +122,22 @@ g2c_project_set_property( g2cProject *project,
     {
       project->output_build_files = g2c_get_bool( value );
     }
-  else
-    {
-      g_hash_table_insert( project->properties,
-                           g_strdup( name ),
-                           g_strdup( value ) );
-    }
+//  else
+//    {
+//      g_hash_table_insert( project->properties,
+//                           g_strdup( name ),
+//                           g_strdup( value ) );
+//    }
 }
 
-const gchar *
-g2c_project_get_property( g2cProject *project,
-                          const gchar *name )
-{
-  return g_hash_table_lookup( project->properties,
-                              name );
-}
+//const gchar *
+//g2c_project_get_property( g2cProject *project,
+//                          const gchar *name )
+//{
+//  //return g_hash_table_lookup( project->properties,
+//  //                            name );
+//    
+//}
 
 void
 g2c_project_add_top_level_widget( g2cProject *project,

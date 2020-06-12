@@ -28,8 +28,8 @@ gchar         *MAIN_WINDOW;
 g2cDoc *g2c_doc_new( gchar *xml_file_name );
 void    g2c_doc_destroy( g2cDoc *doc );
 
-void    g2c_doc_parse( g2cDoc *doc );
-void    g2c_doc_output( g2cDoc *doc );
+int    g2c_doc_parse( g2cDoc *doc );
+int    g2c_doc_output( g2cDoc *doc );
 
 
 #endif

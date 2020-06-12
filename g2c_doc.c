@@ -230,7 +230,7 @@ g2c_doc_destroy( g2cDoc *doc )
   g_free( doc );
 }
 
-void
+int
 g2c_doc_parse( g2cDoc *doc )
 {
   xmlNodePtr project_node = NULL;
@@ -247,6 +247,7 @@ g2c_doc_parse( g2cDoc *doc )
   if( strcmp( get_node_name( doc->current ), "interface" ) != 0 )
     {
       g_error( "This is not a glade file!" );
+      return 1;
     }
 
   project_node = set_first_object(doc->current);
@@ -259,9 +260,10 @@ g2c_doc_parse( g2cDoc *doc )
   doc->current = project_node;
   if( NULL != doc->current )
     parse_top_level_widgets( doc );
+  return 0;
 }
 
-void
+int
 g2c_doc_output( g2cDoc *doc )
 {
   gchar *filename = NULL;
@@ -351,6 +353,8 @@ g2c_doc_output( g2cDoc *doc )
   
   allocate_orphans(main_widget, orphans);
   
+  g_list_free( orphans );
+  
   /*                 ***  End of restructuring                *** */
   
   /*                   End of  register of widgets               */ 
@@ -386,10 +390,11 @@ g2c_doc_output( g2cDoc *doc )
   //  sort top_list for dialogues etc.
   
    if (!sort_top_list(&topreglist, &top_list)) {
-       g_message("g2c_doc_output aborted\n");
-       return;  // cycle detected
+       g_message("generated file output aborted\n");
+       return 1;  // cycle detected
    }
   
+   top_requires_destroy(top_list);
   /*                   End of analysis and re-ordering of widgets               */ 
   
   /* Write out the main.c file */
@@ -418,7 +423,9 @@ g2c_doc_output( g2cDoc *doc )
   }
 #endif
   if( doc->project->output_main_file )
-    output_main_file( doc, filename, topreglist );   
+    output_main_file( doc, filename, topreglist ); 
+   
+   topregister_destroy(topreglist);
 
   /* Parse $src/main.c */
  
@@ -477,10 +484,11 @@ g2c_doc_output( g2cDoc *doc )
     output_cmake_file(doc);
   }
   g_free( DIR_PREFIX );
-  if (CURRENT_MAIN_PARSER != NULL) 
-    g2c_file_parser_destroy (CURRENT_MAIN_PARSER);
+  if (CURRENT_SOURCE_PARSER != NULL) 
+    g2c_file_parser_destroy (CURRENT_SOURCE_PARSER);
   
-  CURRENT_MAIN_PARSER = NULL;
+  CURRENT_SOURCE_PARSER = NULL;
+  return 0;
 }
 
 static gchar*
@@ -775,6 +783,8 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
               col_type = g_strdup( get_attr_node_text( attr ) );
               column_add(widget, col_name, col_type);              
               child_node = get_next_node(child_node);
+              if ( NULL != col_name ) g_free( col_name );
+              g_free( col_type );
           }
           /*  node still points to the columns element but its 'next' will be NULL and so will POP */
       }
@@ -1387,7 +1397,6 @@ output_widget_gui_h( g2cWidget *main_widget, g2cDoc *doc )
   gchar *file_name  = NULL;
   gchar *gui_name   = NULL;
   gchar *type_name  = NULL;
-  //gchar *make_name  = NULL;
   gchar *temp_name = NULL;
   g2cWidget *widget = NULL;
   //g2cWidget *widget2= NULL;
@@ -1425,7 +1434,6 @@ output_widget_gui_h( g2cWidget *main_widget, g2cDoc *doc )
 
   /* This file is always blown away then written, so now existence checks are necessary */
   file_name = g_strconcat( DIR_PREFIX, "/", main_widget->name, "_gui.h", NULL );
-  //make_name      = g_strconcat (main_widget->name, "_gui.h", NULL);
 
   
   g_message( "Creating %s\n", file_name );
@@ -1445,6 +1453,7 @@ output_widget_gui_h( g2cWidget *main_widget, g2cDoc *doc )
   fprintf( file, "#ifndef %s\n", gui_name );
   fprintf( file, "#define %s\n", gui_name );
   fprintf( file, "\n" );
+  g_free( gui_name );
 
   /* #include <gtk/gtk.h> */
   fprintf( file, "#include <gtk/gtk.h>\n" );
@@ -1549,6 +1558,7 @@ output_widget_gui_h( g2cWidget *main_widget, g2cDoc *doc )
   fclose( file );
   CURRENT_FILE = NULL;
 
+  g_free( type_name );
   g_free( file_name );
   
     
@@ -1570,9 +1580,7 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
   GList *register_list;
   g2cRegister *reg;
   
-/* Get the transformed names for the widget */
-  //gui_name  = g2c_transform_name( main_widget->name, NT_GUI );
-  //std_name  = g2c_transform_name( main_widget->name, NT_STANDARD );
+/* Get the transformed name for the widget */
   type_name = g2c_transform_name( main_widget->name, NT_TYPENAME );  
   
   /* Write widget_gui.c
@@ -1614,7 +1622,6 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
    */
 
   file_name      = g_strconcat( DIR_PREFIX, "/", main_widget->name, "_gui.c", NULL );
-  //make_name      = g_strconcat (main_widget->name, "_gui.c", NULL);
   
   g_message( "Creating %s\n", file_name );
  
@@ -1829,8 +1836,8 @@ output_widget_gui_c( g2cWidget *main_widget, g2cDoc *doc, g2cWidget *parent_widg
   fclose( file );
   CURRENT_FILE = NULL;
   
+  g_free( type_name );
   g_free( file_name );
-  //g_free( make_name );
     
     
 }  /* end output_widget_gui_c  */
@@ -1840,7 +1847,6 @@ output_widget_h( g2cWidget *main_widget, g2cDoc *doc )
 {
   FILE  *file       = 0;
   gchar *file_name  = NULL;
-  gchar *gui_name   = NULL;
   gchar *std_name   = NULL;
   gchar *type_name  = NULL;
   gchar *dialogue_type_name  = NULL;
@@ -1850,7 +1856,6 @@ output_widget_h( g2cWidget *main_widget, g2cDoc *doc )
   GList *model_run  = NULL;
   
 /* Get the transformed names for the widget */
-  gui_name  = g2c_transform_name( main_widget->name, NT_GUI );
   std_name  = g2c_transform_name( main_widget->name, NT_STANDARD );
   type_name = g2c_transform_name( main_widget->name, NT_TYPENAME );  
  
@@ -1892,6 +1897,7 @@ output_widget_h( g2cWidget *main_widget, g2cDoc *doc )
   fprintf( file, "#define %s\n", std_name );
   fprintf( file, "\n" );
   fprintf( file, "#include <gtk/gtk.h>\n" );
+  g_free( std_name  );
   
   fprintf( file, "#include \"%s_gui.h\"\n", main_widget->name );
   run = g_list_first(doc->project->dialogue_widgets);
@@ -1937,7 +1943,8 @@ output_widget_h( g2cWidget *main_widget, g2cDoc *doc )
   while (run != NULL) {
       widget = (g2cWidget *) run->data;          
       dialogue_type_name = g2c_transform_name( widget->name, NT_TYPENAME );
-      fprintf( file, "\t%sGui *%sgui;\n", dialogue_type_name, widget->name );          
+      fprintf( file, "\t%sGui *%sgui;\n", dialogue_type_name, widget->name );   
+      g_free( dialogue_type_name );
       run = g_list_next(run);
   } 
   
@@ -1954,7 +1961,7 @@ output_widget_h( g2cWidget *main_widget, g2cDoc *doc )
   fclose( file );
   CURRENT_FILE = NULL;
     
-
+  g_free( type_name ); 
   g_free( file_name );  
     
 }  /* end output_widget_h  */
@@ -2108,6 +2115,8 @@ g2cWidget *widget = NULL;
     g_free( window_file_name );
     g_free( control_file_name );
     g_free( model_file_name );
+    g_free( project_name );
+    g_free( separator );
 	
     fclose( CURRENT_FILE );    
     return;
@@ -2271,6 +2280,7 @@ output_widget_c( g2cWidget *main_widget, g2cDoc *doc )
                 fprintf( file, "\treturn;\n");
                 fprintf( file, "}\n\n");
            }
+           g_free( dialogue_type_name );
       }
       run = g_list_next(run);
   }    
@@ -2331,6 +2341,7 @@ output_widget_c( g2cWidget *main_widget, g2cDoc *doc )
       output_model_populater(dialog_widget, dialogue_type_name, file);
       model_run = g_list_next(model_run);
     }
+    g_free( dialogue_type_name );
     run = g_list_next(run);
   }
 
@@ -2347,6 +2358,8 @@ output_model_enum(g2cWidget* widget, FILE  *file)
 GList *coltype = NULL;    
 g2cColumn *column;
 gboolean firstcol;
+gchar *colcase = NULL;
+gchar *namecase = NULL;
 
     fprintf( file,"enum\n");
     fprintf( file,"{\n");
@@ -2357,15 +2370,19 @@ gboolean firstcol;
     coltype = g_list_first(widget->columns);
     while (coltype != NULL) {
         column = (g2cColumn *) coltype->data;
+        colcase = g_ascii_strup(column->col_name, -1);
         if (firstcol == TRUE) {
-          fprintf( file,"\tCOL_%s = 0,\n", g_ascii_strup(column->col_name, -1) );
+          fprintf( file,"\tCOL_%s = 0,\n",  colcase);
           firstcol = FALSE;
         } else {
-          fprintf( file,"\tCOL_%s,\n", g_ascii_strup(column->col_name, -1) );  
-        }              
+          fprintf( file,"\tCOL_%s,\n", colcase );  
+        }  
+        g_free( colcase );
         coltype = g_list_next(coltype);
     }
-    fprintf( file, "\tNUMCOLS_%s\n", g_ascii_strup(widget->name, -1) );
+    namecase = g_ascii_strup(widget->name, -1);
+    fprintf( file, "\tNUMCOLS_%s\n", namecase );
+    g_free( namecase );
     fprintf( file,"};\n");
 }
 
@@ -2562,7 +2579,8 @@ output_widget_create( g2cWidget *widget,
                        ( strcmp( widget->parent->klass_name, "GtkListBoxRow"      ) == 0 ) ||
                        ( strcmp( widget->parent->klass_name, "GtkMenuButton"      ) == 0 ) ||
                        ( strcmp( widget->parent->klass_name, "GtkSearchBar"       ) == 0 ) ||
-                       ( strcmp( widget->parent->klass_name, "GtkAlignment"       ) == 0 ) ) 
+                       ( strcmp( widget->parent->klass_name, "GtkAlignment"       ) == 0 ) ||
+                       ( strcmp( widget->parent->klass_name, "GtkEventBox"        ) == 0 ) ) 
               {
                   fprintf( file,
                         "\tgtk_container_add(GTK_CONTAINER(gui->%s), GTK_WIDGET(gui->%s));\n",
@@ -3267,7 +3285,8 @@ gchar  *type_name = g_utf8_strup(func_name, strlen(func_name));
                   func_name, type_name, widget->name, data);
           run = g_list_next( run );
       }
-    
+      g_free( func_name );
+      g_free( type_name );
 }
 
 void 

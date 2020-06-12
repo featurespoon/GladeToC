@@ -73,7 +73,6 @@ void listbox_selection_mode ( g2cWidget *widget );
 void menu_anchor_hint( g2cWidget *widget );
 void menu_bar_direction( g2cWidget *widget );
 void menu_item_use_stock ( g2cWidget *widget );
-void menu_label( g2cWidget *widget );
 void menu_item_label( g2cWidget *widget );
 void menu_type_hint( g2cWidget *widget );
 void menu_button_popup( g2cWidget *widget );
@@ -133,6 +132,7 @@ void create_gtk_label( g2cWidget *widget );
 void create_gtk_link_button( g2cWidget *widget );
 void create_gtk_liststore( g2cWidget *widget );
 void create_gtk_lockbutton( g2cWidget *widget );
+void create_menu_item( g2cWidget *widget );
 void create_gtk_message_dialog ( g2cWidget *widget  );
 void create_gtk_model_button( g2cWidget *widget );
 void create_gtk_paned ( g2cWidget *widget );
@@ -277,7 +277,7 @@ static g2cCreateFunction create_functions[] =
 
     { "GtkImageMenuItem", NULL,
       { NULL },
-      menu_label },
+      create_menu_item },
 
     { "GtkLabel", NULL,
       { NULL },       
@@ -305,7 +305,7 @@ static g2cCreateFunction create_functions[] =
 
     { "GtkMenuItem", NULL,
       { NULL },
-      menu_label },
+      create_menu_item },
 
     { "GtkMessageDialog",NULL ,
       { NULL },
@@ -1523,13 +1523,6 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "$accel_path", NULL },
       NULL,
       NULL },    
-
-    { "GtkMenuItem", "accel_path",
-      "\tgtk_menu_item_set_accel_path (GTK_MENU_ITEM (gui->%s), %s);\n",
-      { "name", "$accel_path", NULL },
-      NULL,
-      NULL },
-
    
 //    { "GtkImage", "pixbuf",   /*  ignored  */
 //      NULL,
@@ -1715,6 +1708,12 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        set_menu_button_direction}, 
        
+     { "GtkMenuItem", "accel_path",
+      "\tgtk_menu_item_set_accel_path (GTK_MENU_ITEM (gui->%s), %s);\n",
+      { "name", "$accel_path", NULL },
+      NULL,
+      NULL },
+  
      { "GtkMenuItem", "right_justified",
       "\tgtk_widget_set_halign(GTK_WIDGET(gui->%s), GTK_ALIGN_END);\n",
       { "name", NULL },
@@ -2852,7 +2851,6 @@ static g2cCommonParam common_params[] =
     {"decorated", TRUE, NULL, "GtkWindow"},
     {"deletable", TRUE, NULL, "GtkWindow"},
     {"has_resize_grip", TRUE, NULL, "GtkWindow"},
-    {"accel_path", TRUE, NULL, "GtkMenuItem" },
     {"role", TRUE, "char", "GtkWindow" },
     {"attached_to", TRUE, "widget", "GtkWindow" },
     {"show_editor", FALSE, NULL, NULL},
@@ -3490,6 +3488,7 @@ guint i;
          "\tgtk_button_box_set_layout (gui->%s, %s);\n",
            widget->name,
            style);
+   g_free( style );
 }
 
 void set_popover_position ( g2cWidget *widget )
@@ -3565,7 +3564,7 @@ gchar *style = NULL;
    } else {
        g_message("Unexpected toolbar_style for %s %s\n", widget->klass_name, widget->name);
    }
-   
+   g_free( style );
 }
 
 void 
@@ -3593,8 +3592,8 @@ text_buffer_text ( g2cWidget *widget )
          g_strfreev( lines );         
     } else {
        fprintf( CURRENT_FILE,
-         "\tgtk_text_buffer_set_text (GTK_TEXT_BUFFER (gui->%s), %s, -1);\n",
-               widget->name, g2c_stringify(text));
+         "\tgtk_text_buffer_set_text (GTK_TEXT_BUFFER (gui->%s), \"%s\", -1);\n",
+               widget->name, text);
     }
 }
 
@@ -3633,19 +3632,21 @@ gchar * func_name = NULL;
 gchar * caps_name = NULL;
 
     hintlist = g2c_widget_get_property( widget, "input_hints");
-	func_name = g2c_transform_name ( widget->klass_name, NT_FUNCTION ); 
-	caps_name = g_utf8_strup (func_name, strlen(func_name)); 
+    func_name = g2c_transform_name ( widget->klass_name, NT_FUNCTION ); 
+    caps_name = g_utf8_strup (func_name, strlen(func_name)); 
     if (  ( strcmp( widget->klass_name, "GtkEntry"   ) == 0 )  ||
           ( strcmp( widget->klass_name, "GtkTextView" ) == 0 ) )  {
         fprintf( CURRENT_FILE,
                "\t%s_set_input_hints (%s (gui->%s), %s);\n",
 			    func_name,
-				caps_name,
+			    caps_name,
                 widget->name,			    
                 hintlist );   
     } else {
         g_message("Unexpected input hints for widget %s\n", widget->name);
     }
+    g_free( func_name );
+    g_free( caps_name );
 }
 
 void input_purpose( g2cWidget *widget )
@@ -3669,7 +3670,10 @@ gchar * caps_name = NULL;
                 purpose_enum );   
     } else {
         g_message("Unexpected input purpose for widget %s\n", widget->name);
-    }    
+    } 
+    g_free( func_name );
+    g_free( caps_name );
+    g_free( purpose_enum );
 }
 
 void
@@ -3684,8 +3688,6 @@ gboolean underline = FALSE;
     g_assert( NULL != widget );
     markup = g2c_get_bool(g2c_widget_get_property( widget, "use_markup" ));
     g_assert( TRUE == markup );   
-	//func_name = g2c_transform_name ( widget->klass_name, NT_FUNCTION ); 
-	//caps_name = g_utf8_strup (func_name, strlen(func_name)); 	
     underline = g2c_get_bool(g2c_widget_get_property( widget, "use_underline" ));
     label = g2c_stringify( g2c_widget_get_property( widget, "label" ) );  
     if (underline == FALSE)  {  
@@ -3797,18 +3799,19 @@ gchar *formstr = NULL;
      fprintf( CURRENT_FILE,
              "\tgtk_notebook_set_menu_label_text (gui->%s,"
              "GTK_WIDGET (gui->%s),"
-             "%s);\n",
+             "\"%s\");\n",
              widget->parent->name,
              box_widget->name,
-             g2c_stringify(widget->packing.tab.menu_label ) );  
+             widget->packing.tab.menu_label );  
   }
 }
 
 void 
-menu_label( g2cWidget *widget )
+create_menu_item( g2cWidget *widget )
 {
 gchar * label = NULL;
 gchar * stock = NULL;
+gchar * label_string = NULL;
    g_assert( NULL != widget ); 
    label = g2c_widget_get_property( widget, "label");
    stock = g2c_widget_get_property( widget, "use_stock");
@@ -3824,92 +3827,104 @@ gchar * stock = NULL;
                widget->name, widget->klass_name);
        return;
    }
+   label_string = g2c_stringify(label);
    if (has_underscore(label) == FALSE)  {
        fprintf( CURRENT_FILE,
                "\tgui->%s = (%s*) gtk_menu_item_new_with_label(%s);\n",
                widget->name, widget->klass_name, 
-               g2c_stringify(label) );
+               label_string );
    } else {
        fprintf( CURRENT_FILE,
                "\tgui->%s = (%s*) gtk_menu_item_new_with_mnemonic(%s);\n",
                widget->name, widget->klass_name, 
-               g2c_stringify(label) );
+               label_string );
    }
+   g_free( label_string );
 }
 
 void entry_markup ( g2cWidget *widget )
 {
 gchar *markup = NULL;
-
+gchar *markup_string = NULL;
         g_assert( NULL != widget );
         markup = g2c_widget_get_property( widget, "primary_icon_tooltip_markup"); 
-        g_assert ( NULL != markup );           
+        g_assert ( NULL != markup ); 
+        markup_string = g2c_stringify(g_strdelimit(markup,"\"",'\''));
         fprintf( CURRENT_FILE,
                    "\tgtk_entry_set_icon_tooltip_markup(GTK_ENTRY(gui->%s),GTK_ENTRY_ICON_PRIMARY,%s);\n",
-                   widget->name,g2c_stringify(g_strdelimit(markup,"\"",'\'')));
+                   widget->name, markup_string );
+        g_free( markup_string );
 }
 
 void entry_markup2 ( g2cWidget *widget )
 {
 gchar *markup = NULL;
+gchar *markup_string = NULL;
 
         g_assert( NULL != widget );
         markup = g2c_widget_get_property( widget, "secondary_icon_tooltip_markup");                     
-        g_assert ( NULL != markup );    
+        g_assert ( NULL != markup ); 
+        markup_string = g2c_stringify(g_strdelimit(markup,"\"",'\''));
         fprintf( CURRENT_FILE,
                    "\tgtk_entry_set_icon_tooltip_markup(GTK_ENTRY(gui->%s),GTK_ENTRY_ICON_SECONDARY,%s);\n",
-                   widget->name,g2c_stringify(g_strdelimit(markup,"\"",'\'')));
+                   widget->name, markup_string );
+        g_free( markup_string );
 }
 
 void common_events ( g2cWidget *widget )
 {
 gchar *events = NULL;
-//gchar * func_name = NULL;
-//gchar * caps_name = NULL;
 
         g_assert( NULL != widget );
         events = g2c_widget_get_property( widget, "events");
-		//func_name = g2c_transform_name ( widget->klass_name, NT_FUNCTION ); 
-		//caps_name = g_utf8_strup (func_name, strlen(func_name)); 
-		fprintf( CURRENT_FILE,
-				   "\tgtk_widget_set_events(GTK_WIDGET(gui->%s),%s);\n",				   
-				   widget->name, events);
+
+        fprintf( CURRENT_FILE,
+                           "\tgtk_widget_set_events(GTK_WIDGET(gui->%s),%s);\n",				   
+                           widget->name, events);
 	
 }
 
 void common_tooltip_markup ( g2cWidget *widget )
 {
 gchar *markup = NULL;
+gchar *markup_string = NULL;
         g_assert( NULL != widget );
         markup = g2c_widget_get_property( widget, "tooltip_markup");
         /* convert double quotes in markup to single quotes */
+        markup_string = g2c_stringify(g_strdelimit(markup,"\"",'\''));
         if (strcmp(widget->klass_name,"GtkStatusIcon") == 0) {
             fprintf( CURRENT_FILE,
                        "\tgtk_status_icon_set_tooltip_markup(GTK_STATUS_ICON(gui->%s),%s);\n",
-                       widget->name,g2c_stringify( g_strdelimit(markup,"\"",'\'') ));
+                       widget->name, markup_string );
         } else {        
             fprintf( CURRENT_FILE,
                        "\tgtk_widget_set_tooltip_markup(GTK_WIDGET(gui->%s),%s);\n",
-                       widget->name,g2c_stringify( g_strdelimit(markup,"\"",'\'') ));
+                       widget->name, markup_string );
         }
+        g_free( markup_string );
 }
 
 void message_dialog_secondary_text ( g2cWidget *widget )
 {
 gchar *text = NULL;
 gchar *markup = NULL;
+gchar *markup_string = NULL;
+
         g_assert( NULL != widget );
         text = g2c_widget_get_property( widget, "secondary_text");
-        markup = g2c_widget_get_property( widget, "secondary_use_markup" );
+        markup = g2c_widget_get_property( widget, "secondary_use_markup" );        
         if (markup == NULL) {
             fprintf( CURRENT_FILE,
-            "\tgtk_message_dialog_format_secondary_text ( GTK_MESSAGE_DIALOG(gui->%s), %s);\n",
-                    widget->name, g2c_stringify(text) );
+            "\tgtk_message_dialog_format_secondary_text ( GTK_MESSAGE_DIALOG(gui->%s), \"%s\");\n",
+                    widget->name, text );
         } else {
+            markup_string = g2c_stringify(g_strdelimit(markup,"\"",'\''));
             fprintf( CURRENT_FILE,
             "\tgtk_message_dialog_format_secondary_markup ( GTK_MESSAGE_DIALOG(gui->%s), %s);\n",
-                    widget->name, g2c_stringify(g_strdelimit(text,"\"",'\'')) );
+                    widget->name, markup_string );
+            g_free( markup_string );
         }
+        
 }
 
 void 
@@ -3953,7 +3968,8 @@ button_relief ( g2cWidget *widget )
   g_assert( NULL != widget ); 
   str = g2c_widget_get_property( widget, "relief" );
   if (str == NULL) return;
-  relief = g_strdup_printf("GTK_RELIEF_%s", g_ascii_strup(str, strlen(str)));
+  //relief = g_strdup_printf("GTK_RELIEF_%s", g_ascii_strup(str, strlen(str)));
+  relief = make_enumeral("GTK_RELIEF", str);
   fprintf( CURRENT_FILE,
            "\tgtk_button_set_relief(GTK_BUTTON(gui->%s),%s );\n",
           widget->name, relief);
@@ -3969,7 +3985,7 @@ dialog_type_hint ( g2cWidget *widget )
   str = g2c_widget_get_property( widget, "type_hint" );
   g_assert( NULL == widget->parent );
   if (str == NULL) return;
-  hint = g_strdup_printf("GDK_WINDOW_TYPE_HINT_%s", g_ascii_strup(str, strlen(str)));
+  hint = make_enumeral("GDK_WINDOW_TYPE_HINT", str );
   fprintf( CURRENT_FILE,
            "\tgtk_window_set_type_hint(GTK_WINDOW(gui->%s),%s );\n",
           widget->name, hint);
@@ -4305,7 +4321,10 @@ gchar * caps_name = NULL;
     fprintf( CURRENT_FILE,
            "\t%s_set_shadow_type (%s(gui->%s), %s);\n",
            func_name, caps_name, widget->name,  mode);
-    g_free( mode );    
+    g_free( mode ); 
+    g_free( klass );
+    g_free( func_name );
+    g_free( caps_name );
 }
 
 void scale_value_pos( g2cWidget *widget )
@@ -4587,13 +4606,16 @@ void menu_item_label( g2cWidget *widget )
 {
 gchar *label = NULL;
 gchar *norm_label = NULL;
+gchar *string_label = NULL;
 
     g_assert( NULL != widget );
     label = g2c_widget_get_property( widget, "label" );
     norm_label = remove_prefix(label); 
+    string_label = g2c_stringify(norm_label);
     fprintf( CURRENT_FILE,
            "\tgtk_menu_item_set_label (GTK_MENU_ITEM(gui->%s), %s);\n",
-            widget->name, g2c_stringify(norm_label));
+            widget->name, string_label);
+    g_free( string_label );
     g_free( norm_label );
 }
 
@@ -4681,6 +4703,7 @@ gchar * accel_group = NULL;
       handler = find_signal_handler(widget, accel->signal);
       if (handler == NULL) continue;
       handler_found = TRUE;
+      g_free( handler );
       key = g_strdup_printf( "GDK_KEY_%s", accel->key); 
       if (accel_group != NULL) {
          fprintf( CURRENT_FILE,
@@ -4803,8 +4826,8 @@ gchar * file_name2 = NULL;
     g_assert(NULL != file_name );
     file_name2 = g_strdelimit(file_name, "\\", '/');
     fprintf( CURRENT_FILE,
-           "\t%s_pixbuf = gdk_pixbuf_new_from_file( %s, &%s_error );\n",
-           widget->name, g2c_stringify(file_name2), widget->name); 
+           "\t%s_pixbuf = gdk_pixbuf_new_from_file( \"%s\", &%s_error );\n",
+           widget->name, file_name2, widget->name); 
     fprintf( CURRENT_FILE,"\tif (%s_pixbuf == NULL) {\n", widget->name);
     fprintf( CURRENT_FILE,"\t\tg_print(\"pixbuf error %%s \\n\", %s_error->message );\n ",
             widget->name);
@@ -4959,19 +4982,20 @@ gchar *label = NULL;
 gboolean markup = FALSE;
 gboolean underline = FALSE;
 gchar * func_name = NULL;
-gchar * caps_name = NULL;
+//gchar * caps_name = NULL;
 
-    g_assert( NULL != widget );
-    label = g2c_stringify( g2c_widget_get_property( widget, "label" ));   
-	func_name = g2c_transform_name ( widget->klass_name, NT_FUNCTION ); 
-	caps_name = g_utf8_strup (func_name, strlen(func_name)); 
+    g_assert( NULL != widget );       
+    func_name = g2c_transform_name ( widget->klass_name, NT_FUNCTION ); 	 
     markup = g2c_get_bool(g2c_widget_get_property( widget, "use_markup" ));    
     if (markup == TRUE) {   /*  label cannot be None for Gtk.AccelLabel    */ 
         fprintf( CURRENT_FILE,
              "\tgui->%s = (%s*) %s_new (\"\");\n",  
-                 widget->name, widget->klass_name, func_name);         
-       return;   /*  markups set by label_  */
-    }    
+                 widget->name, widget->klass_name, func_name);  
+        g_free( func_name );
+        return;   /*  markups set by label_  */
+    } 
+    label = g2c_stringify( g2c_widget_get_property( widget, "label" ));
+    //caps_name = g_utf8_strup (func_name, strlen(func_name));
     if (label == NULL) {        
             fprintf( CURRENT_FILE,
                 "\tgui->%s = (%s*) %s_new (\"\");\n",  
@@ -4989,7 +5013,8 @@ gchar * caps_name = NULL;
             fprintf( CURRENT_FILE,
                    "\tgtk_label_set_use_underline (GTK_LABEL(gui->%s), TRUE);\n",
                    widget->name ); 
-        }        
+        }  
+        if ( NULL != label ) g_free( label );
     }
     g_free( func_name );
 }
@@ -5081,8 +5106,10 @@ create_gtk_button( g2cWidget *widget )
   g_assert( NULL != widget );
   g2cWidget *parent = NULL;
   gchar *responseid = NULL;
+  gchar *responseid1 = NULL;
   gchar *label = NULL;
   gboolean underline = FALSE;
+  gchar *label2 = NULL;
 
   label = g2c_widget_get_property( widget, "label" );
   underline = g2c_get_bool(g2c_widget_get_property( widget, "use_underline" ));
@@ -5170,7 +5197,7 @@ create_gtk_button( g2cWidget *widget )
                       "\tgui->%s = (GtkButton*) gtk_button_new_with_label (\"\");\n",
                       widget->name );
           } else {
-			  if (underline == FALSE)  {
+	    if (underline == FALSE)  {
                 fprintf ( CURRENT_FILE,
                       "\tgui->%s = (GtkButton*) gtk_button_new_with_label (\"%s\");\n",
                       widget->name, label );
@@ -5186,7 +5213,8 @@ create_gtk_button( g2cWidget *widget )
         }
     }
   else     /*  button has parent but no child_name   */
-    {          
+    {  
+      label2 = remove_prefix(label);
       if (widget->parent->internal == FALSE) {
           if (label == NULL) {
             fprintf ( CURRENT_FILE,
@@ -5196,16 +5224,17 @@ create_gtk_button( g2cWidget *widget )
 			  if (underline == FALSE)  {
 				fprintf ( CURRENT_FILE,
 						  "\tgui->%s = (GtkButton*) gtk_button_new_with_label (\"%s\");\n",
-						  widget->name, remove_prefix(label) ); 
+						  widget->name, label2 ); 
 			  } else {
 				 fprintf ( CURRENT_FILE,
 						  "\tgui->%s = (GtkButton*) gtk_button_new_with_mnemonic (\"%s\");\n",
-						  widget->name, remove_prefix(label) );  
+						  widget->name, label2 );  
 				 fprintf ( CURRENT_FILE,
                    "\tgtk_button_set_use_underline (GTK_BUTTON(gui->%s), TRUE);\n",
                    widget->name ); 
 			  }
           }
+          
       } else {   /*  button has parent and parent is internal and ButtonBox   */
          parent =  widget->parent->parent;  /* parent of ButtonBox: GtkBox, also internal  */
          if (parent != NULL) {             
@@ -5215,21 +5244,26 @@ create_gtk_button( g2cWidget *widget )
                 if (parent != NULL) {   /*  This should be a GtkDialog  */
                     g_assert( g_type_is_a(parent->klass, GTK_TYPE_DIALOG) );
                     responseid = g2c_widget_get_action_widget(parent, widget->name);
-                    if (responseid == NULL)  responseid = g_strdup("0");
+                    if (responseid == NULL) {
+                        responseid1 = g_strdup("0");
+                    } else {
+                        responseid1 = g_strdup(responseid);
+                    }
                     if (label == NULL) {
                         fprintf ( CURRENT_FILE,
                           "\n\tgui->%s = (GtkButton*) gtk_dialog_add_button (GTK_DIALOG(gui->%s), \"\", %s);\n",
                                 widget->name,
                                 parent->name,
-                                responseid);
+                                responseid1);
                     } else {
                         fprintf ( CURRENT_FILE,
                           "\n\tgui->%s = (GtkButton*) gtk_dialog_add_button (GTK_DIALOG(gui->%s), \"%s\", %s);\n",
                                 widget->name,
                                 parent->name,
                                 label,
-                                responseid);
+                                responseid1);
                     }
+                    g_free( responseid1 );
                 }
              } else {  /* parent of ButtonBox is GtkInfoBar  */
                 g_assert( strcmp(parent->klass_name, "GtkInfoBar") == 0 );
@@ -5254,6 +5288,7 @@ create_gtk_button( g2cWidget *widget )
              }
          }
       }
+      g_free( label2 );
     }
 }
 
@@ -5851,6 +5886,7 @@ create_gtk_radio_menu_item( g2cWidget *widget )
     g_assert( NULL != widget );
     gchar *label = g2c_widget_get_property( widget, "label" );
     gchar *group = g2c_widget_get_property( widget, "group" ); 
+    gchar *string_label = NULL;
     if (label == NULL) {
         if (group == NULL) {
             fprintf( CURRENT_FILE,
@@ -5862,27 +5898,29 @@ create_gtk_radio_menu_item( g2cWidget *widget )
                   widget->name, group);
         }         
     } else {
+        string_label = g2c_stringify(label);
         if (group == NULL) {
             if (has_underscore(label) == FALSE) {
               fprintf( CURRENT_FILE,
                "\tgui->%s = (GtkRadioMenuItem *) gtk_radio_menu_item_new_with_label(NULL, %s);\n", 
-                  widget->name, g2c_stringify(label) );
+                  widget->name,  string_label );
             } else {
                fprintf( CURRENT_FILE,
                "\tgui->%s = (GtkRadioMenuItem *) gtk_radio_menu_item_new_with_mnemonic(NULL, %s);\n", 
-                  widget->name, g2c_stringify(label) );  
+                  widget->name, string_label );  
             }
         } else {
             if (has_underscore(label) == FALSE) {
               fprintf( CURRENT_FILE,
                "\tgui->%s = (GtkRadioMenuItem *) gtk_radio_menu_item_new_with_label_from_widget(gui->%s, %s);\n", 
-                  widget->name, group, g2c_stringify(label) );
+                  widget->name, group, string_label );
             } else {
               fprintf( CURRENT_FILE,
                "\tgui->%s = (GtkRadioMenuItem *) gtk_radio_menu_item_new_with_mnemonic_from_widget(gui->%s, %s);\n", 
-                  widget->name, group, g2c_stringify(label) );  
+                  widget->name, group, string_label );  
             }
         } 
+        g_free( string_label );
     }
 }
 
@@ -5890,12 +5928,12 @@ void create_gtk_recent_chooser_dialog ( g2cWidget *widget )
 {
 gchar *recent_manager = NULL;
 gchar *func_name = NULL;
-gchar *caps_name = NULL;
+//gchar *caps_name = NULL;
 
     g_assert( NULL != widget );
     recent_manager = g2c_widget_get_property( widget, "recent_manager" ); 
     func_name = g2c_transform_name ( widget->klass_name, NT_FUNCTION );   /* e.g. gtk_recent_chooser */
-    caps_name = g_utf8_strup ( func_name, strlen(func_name) ); /* e.g. GTK_RECENT_CHOOSER  */
+    //caps_name = g_utf8_strup ( func_name, strlen(func_name) ); /* e.g. GTK_RECENT_CHOOSER  */
     if (strcmp(widget->klass_name, "GtkRecentChooserDialog") == 0 )  {
         if (recent_manager == NULL) {
             fprintf( CURRENT_FILE,
@@ -5919,6 +5957,7 @@ gchar *caps_name = NULL;
                     widget->name, widget->klass_name, func_name, recent_manager);
         }
     }
+    g_free( func_name );
 }
 
 void create_gtk_link_button( g2cWidget *widget )
@@ -6205,15 +6244,18 @@ create_gtk_box( g2cWidget *widget )
                    orientation1 = strdup("GTK_ORIENTATION_HORIZONTAL");
                }
           }
-          if (spacing == NULL) 
-              spacing = strdup("0");
+          if (spacing == NULL) {
+              spacing1 = strdup("0");
+          } else {
+              spacing1 = strdup(spacing);
+          }
 
           fprintf( CURRENT_FILE,
                    "\tgui->%s = (%s*) gtk_box_new (%s,%s);\n",
                    widget->name,
                    widget->klass_name,                       
                    orientation1,
-                   spacing );
+                   spacing1 );
           
           
       } else if (strcmp(widget->klass_name, "GtkButtonBox") == 0) {
@@ -6236,6 +6278,7 @@ create_gtk_box( g2cWidget *widget )
        
     } else {   // This is a box internal to a GtkDialog or GtkAssistant or GtkInfoBar
       if (strcmp(widget->klass_name, "GtkBox") == 0) {
+          parent_name = g_strdup(widget->parent->name);
           if ( (strcmp(widget->parent->klass_name, "GtkDialog") == 0) ||
                (strcmp(widget->parent->klass_name, "GtkAboutDialog") == 0) ||
                (strcmp(widget->parent->klass_name, "GtkAppChooserDialog") == 0) ||
@@ -6244,15 +6287,14 @@ create_gtk_box( g2cWidget *widget )
                (strcmp(widget->parent->klass_name, "GtkFontChooserDialog") == 0)  ||
                (strcmp(widget->parent->klass_name, "GtkRecentChooserDialog") == 0)  ||
                (strcmp(widget->parent->klass_name, "GtkMessageDialog") == 0) ) {
-
-            parent_name = g_strdup(widget->parent->name);
+            
             fprintf( CURRENT_FILE,
                    "\tgui->%s = (%s*) gtk_dialog_get_content_area (GTK_DIALOG(gui->%s));\n\n",
                    widget->name,
                    widget->klass_name,
                    parent_name );
           } else if (strcmp(widget->parent->klass_name, "GtkInfoBar") == 0) {
-            parent_name = g_strdup(widget->parent->name);
+            //parent_name = g_strdup(widget->parent->name);
             fprintf( CURRENT_FILE,
                    "\tgui->%s = (%s*) gtk_info_bar_get_content_area  (GTK_INFO_BAR(gui->%s));\n\n",
                    widget->name,
@@ -6260,13 +6302,14 @@ create_gtk_box( g2cWidget *widget )
                    parent_name );  
           } else {
              g_assert( strcmp(widget->parent->klass_name, "GtkAssistant") == 0 );
-             parent_name = g_strdup(widget->parent->name);
+             //parent_name = g_strdup(widget->parent->name);
              fprintf( CURRENT_FILE,
                    "\tgui->%s = (%s*) g_object_get_data (G_OBJECT(gui->%s), \"action_area\");\n\n",                     
                    widget->name,
                    widget->klass_name,
                    parent_name ); 
           }
+          g_free( parent_name );
           
       } else if (strcmp(widget->klass_name, "GtkButtonBox") == 0) {
           
@@ -6277,6 +6320,8 @@ create_gtk_box( g2cWidget *widget )
                      widget->name,
                      widget->klass_name,
                      parent_name );
+              g_free( parent_name );
+  
           } else {  /* for GtkDialog there is an internal GtkBox and inside that a GtkButtonBox   */
           /*  Access to the ButtonBox is discouraged. Buttons are added using gtk_dialog_add_button. */
           /*  gtk_dialog_get_action_area is deprecated. */
@@ -6292,8 +6337,8 @@ create_gtk_box( g2cWidget *widget )
     } 
   
 
-  if ( NULL != orientation ) g_free ( orientation );
-  if ( NULL != spacing ) g_free ( spacing );
+  //if ( NULL != orientation ) g_free ( orientation );
+  //if ( NULL != spacing ) g_free ( spacing );
   if ( NULL != orientation1 ) g_free ( orientation1 );
   if ( NULL != spacing1 ) g_free ( spacing1 );
 }
@@ -6335,7 +6380,6 @@ g2c_widget_free_children_cb( gpointer data,
                   gpointer user_data )
 {
 g2cWidget *widget = (g2cWidget *) data;
-  //g_print("g2c_widget_free_children_cb %s\n", widget->name);
   g2c_widget_destroy( widget );
 }
 
@@ -6374,6 +6418,13 @@ g2cColumn *column = (g2cColumn *) data;
     if( NULL != column->col_name )  g_free( column->col_name );
     if( NULL != column->col_type )  g_free( column->col_type );
     g_free( column );
+}
+
+static void
+free_popups( gpointer data,
+              gpointer user_data )
+{  // the element here is g2cWidget which cannot be freed just yet
+    return;
 }
 
 static void
@@ -6670,6 +6721,7 @@ g2c_widget_new( gchar *class_name )
       else if ( strcmp( widget->klass_name, "GtkFixed" ) == 0 ) widget->klass = GTK_TYPE_FIXED;
       else if ( strcmp( widget->klass_name, "GtkExpander" ) == 0 ) widget->klass = GTK_TYPE_EXPANDER;
       else if ( strcmp( widget->klass_name, "GtkSeparator" ) == 0 ) widget->klass = GTK_TYPE_SEPARATOR;
+      else if ( strcmp( widget->klass_name, "GtkEventBox" ) == 0 ) widget->klass = GTK_TYPE_EVENT_BOX;
       else if ( strcmp( widget->klass_name, "GtkStack" ) == 0 ) widget->klass = GTK_TYPE_STACK;
       else if ( strcmp( widget->klass_name, "GtkStackSwitcher" ) == 0 ) widget->klass = GTK_TYPE_STACK_SWITCHER;
       else if ( strcmp( widget->klass_name, "GtkStackSidebar" ) == 0 ) widget->klass = GTK_TYPE_STACK_SIDEBAR;
@@ -6708,7 +6760,6 @@ gchar *value = NULL;
 GList *run;
 gchar *text = NULL;
 
-  //g_print("g2c_widget_destroy %s\n", widget->name);
   allocs = allocs - 1;
 
   proplist = proplist_start(widget);
@@ -6729,7 +6780,7 @@ gchar *text = NULL;
                       g2c_widget_free_children_cb,
                       NULL );
       }
-    //g_list_free( widget->children );
+    g_list_free( widget->children );
     }
   
   if ( widget->signals )
@@ -6758,6 +6809,24 @@ gchar *text = NULL;
 
       g_list_free( widget->columns );
     }
+  
+  if ( widget->popups )
+    {
+      g_list_foreach( widget->popups,
+                      free_popups,
+                      NULL );
+      g_list_free( widget->popups );
+    }
+  
+  if ( widget->accel_widgets )
+  {
+     g_list_free( widget->accel_widgets ); 
+  }
+  
+  if ( widget->associates )
+  {
+      g_list_free( widget->associates );
+  }
   
   if ( widget->table )
     {
@@ -7230,6 +7299,7 @@ g2c_widget_create_signal_prototype_cb( gpointer data,
   fprintf( CURRENT_FILE, "\t%-25s user_data);\n\n", "gpointer" );
   
     }
+  g_free( event );
   g_free( keystr );
   g_free( modifierstr );
 }
@@ -7333,7 +7403,8 @@ g2c_widget_create_closure_prototype( g2cSignal * signal,
   fprintf (CURRENT_FILE, "\t%-25s keyval,\n", "guint");
      
   fprintf (CURRENT_FILE, "\t%-25s modifier);\n", "GdkModifierType");                                     
-    
+   
+  g_free( event );
   g_free( keystr );
   g_free( modifierstr );
 }
@@ -7397,6 +7468,7 @@ g2c_widget_create_closure_handler( g2cSignal * signal,
            //window->name,  /* window1 */
            window_class   /* Window1 */           
          ); 
+  g_free( event );
   g_free( keystr );
   g_free( modifierstr );                      
 }
@@ -7606,8 +7678,11 @@ g2c_widget_create_signal_handler_cb( g2cDoc *doc, g2cSignal * signal,
 
 finish:
 
-  if ( NULL != window_class ) g_free( window_class );
-  if ( NULL != end_text ) g_free( end_text );
+  if ( NULL !=  event )        g_free( event );
+  if ( NULL !=  keystr )       g_free( keystr );
+  if ( NULL !=  modifierstr )  g_free( modifierstr );
+  if ( NULL !=  window_class ) g_free( window_class );
+  if ( NULL !=  end_text )     g_free( end_text );
 }
 
 void
@@ -8000,10 +8075,16 @@ g2c_widget_create_arg_cb( gchar *name,
   remap_name = g2c_widget_remap_param( widget, name ); 
 
   /* Is there a special handler for this property? */
-  if ( g2c_widget_special_handler( widget, remap_name ) == TRUE ) return ;
+  if ( g2c_widget_special_handler( widget, remap_name ) == TRUE ) {
+      g_free( remap_name );
+      return ;
+  }
   
   /*  Handle common property independent of widget class  */
-  if ( g2c_widget_common_param ( widget, remap_name, name) == TRUE ) return;  
+  if ( g2c_widget_common_param ( widget, remap_name, name) == TRUE ) {
+      g_free( remap_name );
+      return;  
+  }
   
   func_prefix = g2c_transform_name(widget->klass_name, NT_FUNCTION);
   type_name_temp = g2c_transform_name(widget->klass_name, NT_FUNCTION);
@@ -8012,7 +8093,8 @@ g2c_widget_create_arg_cb( gchar *name,
    
   fprintf(CURRENT_FILE, "\t%s_set_%s(%s(gui->%s),%s );\n", 
           func_prefix, remap_name, type_name, widget->name, temp_value);
-      
+  
+  g_free( remap_name );    
   g_free( func_prefix );
   g_free( type_name );
   g_free( type_name_temp );
@@ -8279,6 +8361,8 @@ gchar *print_value = NULL;
 gchar *func_name = NULL;
 gchar *caps_name = NULL;
 gchar *name = NULL;
+gchar *string_keyword = NULL;
+gchar *value_case = NULL;
 
 while ( NULL != common_params[ i ].property )
     {      
@@ -8294,7 +8378,9 @@ while ( NULL != common_params[ i ].property )
               } else if (strcmp(common_params[ i ].prefix,"widget") == 0) {
                  print_value = g_strdup_printf("GTK_WIDGET(gui->%s)", value);
               } else {
-                 print_value = g_strdup_printf("%s_%s", common_params[ i ].prefix, g_strdelimit(g_utf8_strup (value, strlen(value)),":-", '_' ) );
+                 value_case = g_utf8_strup (value, strlen(value));
+                 print_value = g_strdup_printf("%s_%s", common_params[ i ].prefix, g_strdelimit(value_case,":-", '_' ) );
+                 g_free( value_case );
               } 
           } else {
               print_value = g2c_format_argument(widget->klass_name, keyword, value); 
@@ -8304,6 +8390,8 @@ while ( NULL != common_params[ i ].property )
               caps_name = g_utf8_strup (func_name, strlen(func_name)); /* e.g. GTK_BUTTON_BOX  */
               fprintf( CURRENT_FILE, "\t%s_set_%s ( %s (gui->%s), %s);\n",
                           func_name, keyword, caps_name, widget->name, print_value);
+              g_free( func_name );
+              g_free( caps_name );
           } else {                                     
               if (common_params[ i ].use == TRUE ) {  /* can use gtk_widget call  */                   
                   
@@ -8311,8 +8399,10 @@ while ( NULL != common_params[ i ].property )
                           keyword, widget->name, print_value ); 
                   
               } else {           /*  must use g_object_set call   */
+                  string_keyword = g2c_stringify(g_strdelimit(keyword, "_", '-'));
                   fprintf( CURRENT_FILE, "\tg_object_set(G_OBJECT(gui->%s),%s, %s, NULL);\n",
-                          widget->name, g2c_stringify(g_strdelimit(keyword, "_", '-')), print_value);
+                          widget->name, string_keyword, print_value);
+                  g_free( string_keyword );
               }
           }
           g_free(print_value);          
@@ -8538,28 +8628,28 @@ gchar *title = NULL;
         fprintf( file,
                 "\tgtk_stack_add_named (GTK_STACK (gui->%s),\n"
                 "\t\tGTK_WIDGET (gui->%s),\n"
-                "\t\t%s);\n",
+                "\t\t\"%s\");\n",
                 widget->parent->name,   /* stack */
                 widget->name,           /*  box  */
-                g2c_stringify(widget->packing.stack.name) );
+                widget->packing.stack.name );
     } else {
         fprintf( file,
                 "\tgtk_stack_add_titled (GTK_STACK (gui->%s),\n"
                 "\t\tGTK_WIDGET (gui->%s),\n"
-                "\t\t%s, %s);\n",
+                "\t\t\"%s\", \"%s\");\n",
                 widget->parent->name,   /* stack */
                 widget->name,           /*  box  */
-                g2c_stringify(widget->packing.stack.name), 
-                g2c_stringify(widget->packing.stack.title)  );
+                widget->packing.stack.name, 
+                widget->packing.stack.title  );
     }
     if (widget->packing.stack.icon_name != NULL) {
         fprintf( file,
                 "\tg_value_init (&%s_icon_name, G_TYPE_STRING);\n",
                 widget->name);
         fprintf( file,
-                "\tg_value_set_string(&%s_icon_name, %s);\n",
+                "\tg_value_set_string(&%s_icon_name, \"%s\");\n",
                 widget->name, 
-                g2c_stringify(widget->packing.stack.icon_name) ); 
+                widget->packing.stack.icon_name ); 
         fprintf( file,
                 "\tgtk_container_child_set_property(GTK_CONTAINER(gui->%s),\n"
                 "\t\t\t\tGTK_WIDGET(gui->%s), \"icon-name\", &%s_icon_name);\n",
@@ -8617,7 +8707,7 @@ g2cSignal *signal = NULL;
      }               
      signal_run = signal_run->next;
   } 
-  return handler;
+  return handler;  /* freed by caller  */
 }
         
 
