@@ -1,9 +1,18 @@
 #include <glib.h>
 
 #ifdef WIN32
-int g2c_common(gchar* program, gchar* glade_file, gchar* gen_dir, gboolean gen_cmake, gchar* resource_file);
+int g2c_common(gchar* program, 
+        gchar* glade_file, 
+        gchar* gen_dir, 
+        gboolean gen_cmake, 
+        gboolean no_parsing, 
+        gchar* resource_file);
 #else
-int g2c_common(gchar* program, gchar* glade_file, gchar* gen_dir, gboolean gen_cmake);
+int g2c_common(gchar* program, 
+        gchar* glade_file, 
+        gchar* gen_dir, 
+        gboolean gen_cmake, 
+        gboolean no_parsing);
 #endif
 
 

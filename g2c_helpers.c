@@ -83,8 +83,9 @@ xmlNode  * set_first_object(xmlNode *root_element )
     
     if ( strcmp(node->name,"requires") == 0 )  node = get_next_node(node);  /// glade 3.16.1 
     
-    /* the node should now be an Element node with name object */  
-    g_assert( (node->type == XML_ELEMENT_NODE) && ( strcmp(node->name,"object") == 0 ));      
+    /* the node should now be an Element node with name object or template */  
+    g_assert( node->type == XML_ELEMENT_NODE );
+    g_assert( ( strcmp(node->name, "object") == 0 ) || ( strcmp(node->name,"template") == 0 ));      
     
     return node;
 }
@@ -147,11 +148,11 @@ g2c_stringify( const gchar *pstr )
       }
       if( CURRENT_PROJECT->gettext_support )
         {
-          result = g_strdup_printf( "_(\"%s\")", pstr );
+          result = g_strdup_printf( "_(\"%s\")", g_strdelimit( (gchar *) pstr, "\"", '\'') );
         }
       else
         {
-          result = g_strdup_printf( "\"%s\"", pstr );
+          result = g_strdup_printf( "\"%s\"", g_strdelimit( (gchar *) pstr, "\"", '\'') );
         }
     }
   else
@@ -535,7 +536,7 @@ g2c_format_argument( const gchar *arg_type_name,
        return strdup(arg_value);
   }    
     
-  return g2c_stringify(arg_value);
+  return g2c_stringify( arg_value );
 
 }
 
@@ -1937,10 +1938,11 @@ g2cProp *prop;
         requires_add(global, main, widget->name, prop->value);
         //g_message("popup property found for %s\n", widget->klass_name );
       }
-      if (strcmp(prop->key,"relative_to") == 0) {      
-         requires_add(global, main, widget->name, prop->value);
+      /* no code is generated for relative_to */
+      //if (strcmp(prop->key,"relative_to") == 0) {      
+      //   requires_add(global, main, widget->name, prop->value);
          //g_message("relative_to property found for %s\n", widget->klass_name );
-      }
+      //}
       if (strcmp(prop->key,"accel_widget") == 0) {      
          requires_add(global, main, widget->name, prop->value);
          //g_message("accel_widget property found for %s\n", widget->klass_name );

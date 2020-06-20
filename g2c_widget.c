@@ -112,6 +112,7 @@ void volume_button_size ( g2cWidget *widget );
 void window_attached ( g2cWidget *widget ); 
 void window_icon ( g2cWidget *widget );
 void window_transient( g2cWidget *widget );
+void window_type( g2cWidget *widget );
 
 /* Creation handler prototypes */
 void create_custom_widget( g2cWidget *widget );
@@ -452,6 +453,7 @@ static g2cAfterParam after_params[] =
   {
     { "resize_mode"  },
     { "_overlay" },
+    { "_pass_through" },
     { "_expand" },
     { "_page_type" },
     { "_page_title" },
@@ -488,6 +490,8 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkAspectFrame", "yalign" },
     { "GtkAspectFrame", "ratio" },
     { "GtkAspectFrame", "obey_child" },
+    { "GtkAssistant", "type" },  /* cannot be set on construction */
+    { "GtkAssistant", "use_header_bar" },  /* cannot be set on construction */
     { "GtkWidget", "_tab_label" },
     { "GtkBox", "can_focus"},   /* because this is a common widget property */
     { "GtkBox", "orientation" },
@@ -651,6 +655,7 @@ static g2cIgnoreParam ignore_params[] =
 static g2cRemapParam remap_params[] =
   {
     { "GtkWindow", "window_position", "position" }, 
+    { "GtkAssistant", "window_position", "position" }, 
     { "GtkDialog", "window_position", "position" }, 
     { "GtkFontChooserDialog", "window_position", "position" },
     { "GtkColorChooserDialog", "window_position", "position" }, 
@@ -1086,17 +1091,17 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        NULL}, 
        
-//    { "GtkCellRendererToggle", "cell_background_rgba",
-//       NULL,
-//       { NULL },
-//       NULL,
-//       background_rgb}, 
+    { "GtkCellRendererToggle", "cell_background_rgba",
+       NULL,
+       { NULL },
+       NULL,
+       background_rgb}, 
        
-//     { "GtkCellRendererPixbuf", "cell_background_rgba",
-//       NULL,
-//       { NULL },
-//       NULL,
-//       background_rgb},  
+     { "GtkCellRendererPixbuf", "cell_background_rgba",
+       NULL,
+       { NULL },
+       NULL,
+       background_rgb},  
        
     { "GtkCellRendererCombo", "background_rgba",
        NULL,
@@ -1324,7 +1329,13 @@ static g2cSpecialHandler special_handlers[] =
         "\tgtk_entry_set_max_length (GTK_ENTRY(gui->%s), %s );\n",
     { "name", "max_length", NULL },
         NULL,
-        NULL},           
+        NULL},
+      
+    { "GtkEntry","placeholder_text",
+        "\tgtk_entry_set_placeholder_text (GTK_ENTRY(gui->%s), %s );\n",
+    { "name", "$placeholder_text", NULL },
+        NULL,
+        NULL},  
         
     { "GtkEntryBuffer", "text",
       "\tgtk_entry_buffer_set_text (GTK_ENTRY_BUFFER (gui->%s), %s, -1);\n",
@@ -2460,7 +2471,7 @@ static g2cSpecialHandler special_handlers[] =
       NULL },    /*  text_buffer_text */
          
     { "GtkToggleButton", "active",
-      "\tgtk_toggle_tool_button_set_active (GTK_TOGGLE_BUTTON (gui->%s), %s);\n",
+      "\tgtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (gui->%s), %s);\n",
       { "name", "active", NULL, NULL, NULL },
       NULL,
       NULL },  
@@ -2704,7 +2715,7 @@ static g2cSpecialHandler special_handlers[] =
          window_attached },  
       
     { "GtkWindow", "default_height",
-      "\tg_object_set(G_OBJECT(gui->%s),\"default_height\", %s,NULL);\n",
+      "\tg_object_set( G_OBJECT(gui->%s),\"default_height\", %s,NULL );\n",
       { "name", "default_height", NULL },
       NULL,
       NULL },
@@ -2716,7 +2727,7 @@ static g2cSpecialHandler special_handlers[] =
       NULL },
       
    { "GtkWindow", "height_request",
-      "\tg_object_set(G_OBJECT(gui->%s),\"height_request\", %s,NULL);\n",
+      "\tg_object_set( G_OBJECT(gui->%s),\"height_request\", %s,NULL );\n",
       { "name", "height_request", NULL },
       NULL,
       NULL },
@@ -2727,17 +2738,29 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       window_icon },
       
-    { "GtkWindow", "resize",
-      "\tgtk_window_set_resizable (GTK_WINDOW (gui->%s), %s);\n",
-      { "name", "resize", NULL },
+    { "GtkWindow", "resizable",
+      "\tgtk_window_set_resizable ( GTK_WINDOW (gui->%s), %s );\n",
+      { "name", "resizable", NULL },
       NULL,
       NULL },
+      
+    { "GtkWindow", "title",
+      "\tgtk_window_set_title ( GTK_WINDOW (gui->%s), %s );\n",
+      { "name", "$title", NULL },
+      NULL,
+      NULL },  
         
     { "GtkWindow", "transient_for",   /* also applies to dialog classes */
          NULL,
       {  NULL },
          NULL,
-         window_transient },  
+         window_transient }, 
+      
+    { "GtkWindow", "type",  
+         NULL,
+      {  NULL },
+         NULL,
+         window_type },   
       
     { "GtkWindow", "width_request",
       "\tg_object_set(G_OBJECT(gui->%s),\"width_request\", %s,NULL);\n",
@@ -3635,13 +3658,19 @@ gchar * caps_name = NULL;
     func_name = g2c_transform_name ( widget->klass_name, NT_FUNCTION ); 
     caps_name = g_utf8_strup (func_name, strlen(func_name)); 
     if (  ( strcmp( widget->klass_name, "GtkEntry"   ) == 0 )  ||
-          ( strcmp( widget->klass_name, "GtkTextView" ) == 0 ) )  {
+          ( strcmp( widget->klass_name, "GtkSearchEntry"   ) == 0 )  ||
+          ( strcmp( widget->klass_name, "GtkSpinButton"  ) == 0 ) )  {
         fprintf( CURRENT_FILE,
-               "\t%s_set_input_hints (%s (gui->%s), %s);\n",
-			    func_name,
-			    caps_name,
+               "\tgtk_entry_set_input_hints (GTK_ENTRY (gui->%s), %s);\n",
                 widget->name,			    
                 hintlist );   
+    } else if ( strcmp( widget->klass_name, "GtkTextView" ) == 0 ) {
+        fprintf( CURRENT_FILE,
+               "\t%s_set_input_hints (%s (gui->%s), %s);\n",
+                func_name,
+		caps_name,
+                widget->name,			    
+                hintlist ); 
     } else {
         g_message("Unexpected input hints for widget %s\n", widget->name);
     }
@@ -3661,7 +3690,13 @@ gchar * caps_name = NULL;
     caps_name = g_utf8_strup (func_name, strlen(func_name)); 
     purpose_enum = make_enumeral("GTK_INPUT_PURPOSE", purpose);
     if (  ( strcmp( widget->klass_name, "GtkEntry"   ) == 0 )  ||
-          ( strcmp( widget->klass_name, "GtkTextView" ) == 0 ) )  {
+          ( strcmp( widget->klass_name, "GtkSearchEntry" ) == 0 )  ||
+          ( strcmp( widget->klass_name, "GtkSpinButton"  ) == 0 ) )  {
+        fprintf( CURRENT_FILE,
+               "\tgtk_entry_set_input_purpose (GTK_ENTRY (gui->%s), %s);\n",
+                widget->name,			    
+                purpose_enum );   
+    } else if ( strcmp( widget->klass_name, "GtkTextView" ) == 0 ) {
         fprintf( CURRENT_FILE,
                "\t%s_set_input_purpose (%s (gui->%s), %s);\n",
 		func_name,
@@ -4818,6 +4853,20 @@ gchar *type_name = NULL;
     g_free(  type_name );
 }
 
+void window_type( g2cWidget *widget )
+{
+gchar *type = NULL;
+gchar *type_name = NULL;
+    g_assert( NULL != widget ); 
+    if (strcmp(widget->klass_name, "GtkAssistant") == 0) return; /* can only be set on construction */
+    type = g2c_widget_get_property( widget, "type" );
+    type_name = make_enumeral("GTK_WINDOW", type);
+    fprintf( CURRENT_FILE,
+            "\tg_object_set(G_OBJECT(gui->%s),\"type\", %s, NULL);\n",
+              widget->name, type_name);
+    g_free(  type_name );
+}
+
 void entry_primary_pixbuf ( g2cWidget *widget )
 {
 gchar * file_name = NULL;
@@ -5356,7 +5405,7 @@ void create_gtk_lockbutton( g2cWidget *widget )
 }
 
 void create_gtk_popover( g2cWidget *widget )
-{
+{   /*  'relative-to' is suppressed for popovers and popovermenus to avoid circular dependencies  */
 //gchar *relative_to = NULL;
 //gchar *main_type = NULL;
 

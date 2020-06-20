@@ -34,9 +34,18 @@ struct stat s_stat;
 }
 
 #ifdef WIN32
-int g2c_common(gchar* program, gchar* glade_file, gchar* gen_dir, gboolean gen_cmake, gchar* resource_file)
+int g2c_common(gchar* program, 
+        gchar* glade_file, 
+        gchar* gen_dir, 
+        gboolean gen_cmake, 
+        gboolean no_parsing, 
+        gchar* resource_file)
 #else
-int g2c_common(gchar* program, gchar* glade_file, gchar* gen_dir, gboolean gen_cmake)
+int g2c_common(gchar* program, 
+        gchar* glade_file, 
+        gchar* gen_dir, 
+        gboolean gen_cmake, 
+        gboolean no_parsing)
 #endif
 {
 g2cDoc *doc        = NULL;
@@ -65,6 +74,8 @@ if (program == NULL) {
   doc->project->source_directory = gen_dir;
   
   doc->project->gen_cmake = gen_cmake;
+  
+  doc->project->no_parsing = no_parsing;
   
 #ifdef WIN32  
   doc->project->resource_file = resource_file;

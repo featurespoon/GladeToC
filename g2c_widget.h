@@ -152,13 +152,6 @@ typedef struct tag_g2cTopRegister
 } 
 g2cTopRegister;
 
-//typedef struct tag_g2cDialog_Requires
-//{
-//    gchar *required;
-//    gchar *requiring;
-//}
-//g2cDialog_Requires;
-
 typedef struct tag_g2cColumn
 {
     gchar *col_name;
@@ -194,6 +187,7 @@ typedef struct tag_g2cProject
     gboolean    output_build_files;
     //gboolean    has_bonobo_controls;
     gboolean    gen_cmake;
+    gboolean    no_parsing;
   }
 g2cProject;
 
@@ -273,7 +267,8 @@ clear_signal_list (void);
 gboolean
 is_in_signal_list (gchar *signal_name);
 
-void notebook_packing( g2cWidget *widget, g2cWidget *box_widget );
+void 
+notebook_packing( g2cWidget *widget, g2cWidget *box_widget );
 
 /* Class functions */
 

@@ -427,28 +427,29 @@ g2c_doc_output( g2cDoc *doc )
    
    topregister_destroy(topreglist);
 
-  /* Parse $src/main.c */
- 
-  //CURRENT_MAIN_PARSER = g2c_file_parser_new (filename, doc->project, FT_MAIN);  // not really needed
+  /* Parse $src/control.c */
+   
+  if ( doc->project->no_parsing == FALSE) {
   
   /*  Parse previous $src/control.c which holds the signal handlers */
-  //handlers_filename = g_strconcat( doc->project->source_directory, "/",  main_widget->name, ".c", NULL );
-  handlers_filename = g_strconcat( doc->project->source_directory, "/", "control.c", NULL );
-  if( g2c_check_file_exists( handlers_filename) ) { 
-    CURRENT_SOURCE_PARSER = g2c_file_parser_new (handlers_filename, doc->project, FT_SOURCE); 
-  }  
-  g_free (handlers_filename);
+    handlers_filename = g_strconcat( doc->project->source_directory, "/", "control.c", NULL );
+    if( g2c_check_file_exists( handlers_filename) ) { 
+      CURRENT_SOURCE_PARSER = g2c_file_parser_new (handlers_filename, doc->project, FT_SOURCE); 
+    }  
+    g_free (handlers_filename);
   /*  and then $src/model.c which may hold list- and tree-store populaters */
-  handlers_filename = g_strconcat( doc->project->source_directory, "/", "model.c", NULL );
-  if( g2c_check_file_exists( handlers_filename) ) { 
-      if (NULL == CURRENT_SOURCE_PARSER) {
-         CURRENT_SOURCE_PARSER = g2c_file_parser_new (handlers_filename, doc->project, FT_SOURCE); 
-      }
-      else {
-          g2c_file_parser_add_file (CURRENT_SOURCE_PARSER, handlers_filename, FT_SOURCE);
-      }
-  }  
-  g_free (handlers_filename);
+    handlers_filename = g_strconcat( doc->project->source_directory, "/", "model.c", NULL );
+    if( g2c_check_file_exists( handlers_filename) ) { 
+        if (NULL == CURRENT_SOURCE_PARSER) {
+           CURRENT_SOURCE_PARSER = g2c_file_parser_new (handlers_filename, doc->project, FT_SOURCE); 
+        }
+        else {
+            g2c_file_parser_add_file (CURRENT_SOURCE_PARSER, handlers_filename, FT_SOURCE);
+        }
+    }  
+    g_free (handlers_filename);
+  
+  }
   
   g_free (filename);
 
@@ -1254,6 +1255,19 @@ else if( g_type_is_a( widget->parent->klass, GTK_TYPE_POPOVER_MENU ) )
         doc->current = get_next_node(doc->current);    
     }  /*  end while */
  }
+else if( g_type_is_a( widget->parent->klass, GTK_TYPE_OVERLAY ) ) 
+ {
+     while (doc->current != NULL) { 
+         if ( strcmp( get_node_name( doc->current ), "property" ) == 0 ) {
+            attr = doc->current->properties;
+            if ( strcmp( get_attr_node_text( attr ), "pass_through" ) == 0 ) { 
+               g2c_widget_set_property (widget, "_pass_through", get_node_text( doc->current ) );              
+           }  
+           /*   index is ignored  */  
+         }
+         doc->current = get_next_node(doc->current);    
+     }
+ } 
 }
 
 static g2cAccel *
@@ -2697,6 +2711,13 @@ output_widget_create( g2cWidget *widget,
                            widget->parent->name,
                            widget->name);
                   }
+                  /*  needs to be placed after the show top level widget  */
+//                  value = g2c_widget_get_property( widget, "_pass_through" );
+//                  if (value != NULL) {
+//                     fprintf( file,
+//                             "\tgdk_window_set_pass_through( gtk_widget_get_window( GTK_WIDGET(gui->%s) ), TRUE);\n",
+//                             widget->name );
+//                  }
               }
               else if (( strcmp( widget->parent->klass_name, "GtkFlowBoxChild" ) == 0 ) && 
                        ( widget->parent->parent != NULL) &&  

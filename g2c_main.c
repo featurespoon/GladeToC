@@ -35,7 +35,8 @@ int usage(char *prog) {
   g_print("\t-x\t- do not produce CMAKE file.\n");
 #ifdef WIN32  
   g_print("\t-r\t- Resource file.\n");
-#endif  
+#endif 
+  g_print("\t-n\t- No check for new handlers.\n");
   g_print("\t-h\t- Help. This message.\n");
   return 0;
 }
@@ -49,13 +50,14 @@ char   *gen_dir    = NULL;  /* The directory into which the generated files are 
 char   *program    = NULL;
 char   *resource_file = NULL;
 gboolean gen_cmake = TRUE;
+gboolean no_parsing = FALSE;
 int ret;
 
 gchar wdir[PATH_MAX];
 
 // command-line option handling 
 #ifdef WIN32
-   while ((c = getopt(argc, argv, "g:d:p:xr:h"))!= -1) {
+   while ((c = getopt(argc, argv, "g:d:p:xnr:h"))!= -1) {
 #else
    while ((c = getopt(argc, argv, "g:d:p:h"))!= -1) {
 #endif       
@@ -71,6 +73,9 @@ gchar wdir[PATH_MAX];
                 break;
             case 'x':
                 gen_cmake = FALSE;
+                break;
+            case 'n':
+                no_parsing = TRUE;
                 break;
 #ifdef WIN32                
             case 'r':
@@ -104,9 +109,18 @@ gchar wdir[PATH_MAX];
   if (!check_exists ( glade_file )) return 1;
   
 #ifdef WIN32  
-  ret = g2c_common(program, glade_file, gen_dir, gen_cmake, resource_file);
+  ret = g2c_common(program, 
+          glade_file, 
+          gen_dir, 
+          gen_cmake, 
+          no_parsing, 
+          resource_file);
 #else
-  ret = g2c_common(program, glade_file, gen_dir, gen_cmake);
+  ret = g2c_common(program, 
+          glade_file, 
+          gen_dir, 
+          gen_cmake, 
+          no_parsing);
 #endif
   
   return ret;
