@@ -193,6 +193,20 @@ guint len = 0;
     return TRUE;
 }
 
+gboolean isinteger(gchar *text)
+{   /*  only digits 0-9 allowed  */
+guint i = 0;
+guint len = 0;
+    if (text == NULL) return FALSE;
+    len = strlen(text);
+    while (i < len) {
+        if (!g_ascii_isdigit(text[i])) break;            
+        i++;
+    }
+    if (i < len) return FALSE;
+    return TRUE;
+}
+
 gboolean 
 isalphanum(gchar *text)
 {

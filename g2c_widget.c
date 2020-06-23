@@ -37,6 +37,7 @@ void button_use_stock( g2cWidget *widget );
 void calendar_set_display_options( g2cWidget *widget );
 void cell_background_rgb ( g2cWidget *widget );
 void colour_chooser_rgba ( g2cWidget *widget );
+void column_sort_id( g2cWidget *widget );
 void common_tooltip_markup ( g2cWidget *widget );
 void common_events ( g2cWidget *widget );
 void dialog_type_hint ( g2cWidget *widget );
@@ -78,7 +79,7 @@ void menu_type_hint( g2cWidget *widget );
 void menu_button_popup( g2cWidget *widget );
 void message_dialog_secondary_text ( g2cWidget *widget );
 void notebook_packing( g2cWidget *widget, g2cWidget *box_widget );
-void other_markup( g2cWidget *widget );
+void renderer_markup( g2cWidget *widget );
 void pack_renderer( g2cWidget *widget );
 void pack_combo_box_column( g2cWidget *widget );
 void paragraph_background_rgb( g2cWidget *widget );
@@ -87,6 +88,8 @@ void range_lower_sensitivity( g2cWidget *widget );
 void range_upper_sensitivity( g2cWidget *widget );
 void recent_chooser_sort_type( g2cWidget *widget );
 void recent_manager_filename( g2cWidget *widget );
+void renderer_pixbuf( g2cWidget *widget );
+void renderer_from_stock( g2cWidget *widget );
 void renderer_text_align( g2cWidget *widget );
 void scale_value_pos( g2cWidget *widget );
 void scale_button_icons ( g2cWidget *widget ); 
@@ -121,6 +124,7 @@ void create_gtk_app_chooser_dialog ( g2cWidget *widget );
 void create_gtk_aspect_frame( g2cWidget *widget );
 void create_gtk_box( g2cWidget *widget );
 void create_gtk_button( g2cWidget *widget );
+void create_gtk_cellrendererpixbuf( g2cWidget *widget );
 void create_gtk_cellrenderertoggle( g2cWidget *widget );
 void create_gtk_combobox( g2cWidget *widget );
 void create_gtk_entry( g2cWidget *widget );
@@ -255,6 +259,10 @@ static g2cCreateFunction create_functions[] =
     { "GtkButtonBox", NULL,
       { NULL },
       create_gtk_box }, 
+    
+    { "GtkCellRendererPixbuf", NULL,
+      { NULL },  
+      create_gtk_cellrendererpixbuf },
       
     { "GtkCellRendererToggle", NULL,
       { NULL },
@@ -513,8 +521,15 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkCalendar", "show_week_numbers" },
     { "GtkCalendar", "week_start_monday" },
     { "GtkCellRendererText", "placeholder_text" },
-    { "GtkCellRendererToggle", "active" },
+    { "GtkCellRendererSpin", "placeholder_text" },
+    { "GtkCellRendererCombo", "placeholder_text" },
+    { "GtkCellRendererAccel", "placeholder_text" },
+    { "GtkCellRendererToggle", "active" },  /*  Toggle state  */
+    { "GtkCellRendererToggle", "activatable" },
     { "GtkCellRendererSpin", "climb_rate" },
+    { "GtkCellRendererPixbuf", "pixbuf_expander_open" },
+    { "GtkCellRendererPixbuf", "pixbuf_expander_closed" },
+    { "GtkCellRendererPixbuf", "follow_state" },   /*  deprecated  */
     { "GtkCheckButton", "can_focus" },
     { "GtkCheckButton", "xalign" },
     { "GtkCheckMenuItem", "label"},
@@ -891,8 +906,98 @@ static g2cSpecialHandler special_handlers[] =
       "\tgtk_calendar_set_display_options(GTK_CALENDAR(gui->%s),GTK_CALENDAR_SHOW_WEEK_NUMBERS);\n",
       { "name", NULL },
       NULL,
-      NULL },   
+      NULL },
+      /*  inheritance does not work for GtkCellRenderer  */
+//    { "GtkCellRenderer", "cell_background_rgba",
+//       NULL,
+//       { NULL },
+//       NULL,
+//       cell_background_rgb},
+    
+    { "GtkCellRendererText", "cell_background",
+       "\tg_object_set(G_OBJECT(gui->%s),\"cell-background\", \"%s\", NULL);\n",
+       { "name","cell_background", NULL },
+       NULL,
+       NULL},    
        
+    
+    { "GtkCellRendererText", "xalign",
+       "\tg_object_set(G_OBJECT(gui->%s),\"xalign\", %s, NULL);\n",
+       { "name","xalign", NULL },
+       NULL,
+       NULL},  
+       
+    { "GtkCellRendererToggle", "xalign",
+       "\tg_object_set(G_OBJECT(gui->%s),\"xalign\", %s, NULL);\n",
+       { "name","xalign", NULL },
+       NULL,
+       NULL},
+       
+    { "GtkCellRendererSpin", "xalign",
+       "\tg_object_set(G_OBJECT(gui->%s),\"xalign\", %s, NULL);\n",
+       { "name","xalign", NULL },
+       NULL,
+       NULL}, 
+       
+    { "GtkCellRendererCombo", "xalign",
+       "\tg_object_set(G_OBJECT(gui->%s),\"xalign\", %s, NULL);\n",
+       { "name","xalign", NULL },
+       NULL,
+       NULL},    
+
+    { "GtkCellRendererAccel", "xalign",
+       "\tg_object_set(G_OBJECT(gui->%s),\"xalign\", %s, NULL);\n",
+       { "name","xalign", NULL },
+       NULL,
+       NULL}, 
+       
+    { "GtkCellRendererPixbuf", "xalign",
+       "\tg_object_set(G_OBJECT(gui->%s),\"xalign\", %s, NULL);\n",
+       { "name","xalign", NULL },
+       NULL,
+       NULL}, 
+       
+    { "GtkCellRendererText", "yalign",
+       "\tg_object_set(G_OBJECT(gui->%s),\"yalign\", %s, NULL);\n",
+       { "name","yalign", NULL },
+       NULL,
+       NULL}, 
+              
+    { "GtkCellRendererToggle", "yalign",
+       "\tg_object_set(G_OBJECT(gui->%s),\"yalign\", %s, NULL);\n",
+       { "name","yalign", NULL },
+       NULL,
+       NULL},  
+       
+    { "GtkCellRendererSpin", "yalign",
+       "\tg_object_set(G_OBJECT(gui->%s),\"yalign\", %s, NULL);\n",
+       { "name","yalign", NULL },
+       NULL,
+       NULL}, 
+       
+    { "GtkCellRendererCombo", "yalign",
+       "\tg_object_set(G_OBJECT(gui->%s),\"yalign\", %s, NULL);\n",
+       { "name","yalign", NULL },
+       NULL,
+       NULL}, 
+       
+    { "GtkCellRendererAccel", "yalign",
+       "\tg_object_set(G_OBJECT(gui->%s),\"yalign\", %s, NULL);\n",
+       { "name","yalign", NULL },
+       NULL,
+       NULL}, 
+       
+    { "GtkCellRendererPixbuf", "yalign",
+       "\tg_object_set(G_OBJECT(gui->%s),\"yalign\", %s, NULL);\n",
+       { "name","yalign", NULL },
+       NULL,
+       NULL},    
+//    { "GtkCellRendererText", "width",
+//       "\tg_object_set(G_OBJECT(gui->%s),\"width\", %s, NULL);\n",
+//       { "name","width", NULL },
+//       NULL,
+//       NULL},    
+          
     { "GtkCellRendererSpin", "adjustment",
        "\tg_object_set(G_OBJECT(gui->%s),\"adjustment\", gui->%s, NULL);\n",
        { "name","adjustment", NULL },
@@ -910,36 +1015,18 @@ static g2cSpecialHandler special_handlers[] =
        { "name","background", NULL },
        NULL,
        NULL},
-       
-     { "GtkCellRendererSpin", "height",
-       "\tg_object_set(G_OBJECT(gui->%s),\"height\", \"%s\", NULL   );\n",
-       { "name","height", NULL },
-       NULL,
-       NULL},
-       
-     { "GtkCellRendererSpin", "width",
-       "\tg_object_set(G_OBJECT(gui->%s),\"width\", \"%s\", NULL   );\n",
-       { "name","width", NULL },
-       NULL,
-       NULL},  
-       
-    { "GtkCellRendererSpin", "size",
-       "\tg_object_set(G_OBJECT(gui->%s),\"size\", %s, NULL   );\n",
-       { "name","size", NULL },
-       NULL,
-       NULL},   
-       
+           
     { "GtkCellRendererSpin", "digits",
        "\tg_object_set(G_OBJECT(gui->%s),\"digits\", %s, NULL   );\n",
        { "name","digits", NULL },
        NULL,
-       NULL},  
+       NULL}, 
        
-    { "GtkCellRenderer", "cell_background_rgba",
+    { "GtkCellRendererSpin", "cell_background",
+       "\tg_object_set(G_OBJECT(gui->%s),\"cell-background\", \"%s\", NULL);\n",
+       { "name","cell_background", NULL },
        NULL,
-       { NULL },
-       NULL,
-       cell_background_rgb}, 
+       NULL},    
        
     { "GtkCellRendererSpin", "background_rgba",
        NULL,
@@ -969,13 +1056,7 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        { NULL },
        NULL,
-       background_rgb},
-
-    { "GtkCellRendererText", "cell_background_rgba",
-       NULL,
-       { NULL },
-       NULL,
-       background_rgb}, 	   
+       background_rgb},	   
        
     { "GtkCellRendererText", "foreground_rgba",
        NULL,
@@ -983,35 +1064,131 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        foreground_rgb},    
        
+    { "GtkCellRendererText", "markup",
+       NULL,
+       {  NULL },
+       NULL,
+       renderer_markup},
+       
+    { "GtkCellRendererSpin", "markup",
+       NULL,
+       {  NULL },
+       NULL,
+       renderer_markup},
+       
+    { "GtkCellRendererCombo", "markup",
+       NULL,
+       {  NULL },
+       NULL,
+       renderer_markup},
+       
+    { "GtkCellRendererAccel", "markup",
+       NULL,
+       {  NULL },
+       NULL,
+       renderer_markup},   
+         
     { "GtkCellRendererText", "width_chars",
        "\tg_object_set(G_OBJECT(gui->%s),\"width_chars\", %s, NULL);\n",
        { "name","width_chars", NULL },
        NULL,
        NULL}, 
        
-      { "GtkCellRendererText", "size",
+    { "GtkCellRendererText", "size",
        "\tg_object_set(G_OBJECT(gui->%s),\"size\", %s, NULL);\n",
        { "name","size", NULL },
        NULL,
        NULL}, 
        
-     { "GtkCellRendererText", "size_points",
+    { "GtkCellRendererSpin", "size",
+       "\tg_object_set(G_OBJECT(gui->%s),\"size\", %s, NULL   );\n",
+       { "name","size", NULL },
+       NULL,
+       NULL},
+       
+    { "GtkCellRendererCombo", "size",
+       "\tg_object_set(G_OBJECT(gui->%s),\"size\", %s, NULL   );\n",
+       { "name","size", NULL },
+       NULL,
+       NULL},
+       
+    { "GtkCellRendererAccel", "size",
+       "\tg_object_set(G_OBJECT(gui->%s),\"size\", %s, NULL   );\n",
+       { "name","size", NULL },
+       NULL,
+       NULL},   
+          
+    { "GtkCellRendererText", "size_points",
        NULL,
        { NULL },
        NULL,
        font_size_points},   
        
-     { "GtkCellRendererText", "scale",
+    { "GtkCellRendererSpin", "size_points",
+       NULL,
+       { NULL },
+       NULL,
+       font_size_points},   
+       
+    { "GtkCellRendererCombo", "size_points",
+       NULL,
+       { NULL },
+       NULL,
+       font_size_points},   
+       
+    { "GtkCellRendererAccel", "size_points",
+       NULL,
+       { NULL },
+       NULL,
+       font_size_points},   
+          
+    { "GtkCellRendererText", "scale",
        NULL,
        { NULL },
        NULL,
        font_size_scale}, 
        
-      { "GtkCellRendererText", "rise",
+    { "GtkCellRendererSpin", "scale",
+       NULL,
+       { NULL },
+       NULL,
+       font_size_scale}, 
+       
+    { "GtkCellRendererCombo", "scale",
+       NULL,
+       { NULL },
+       NULL,
+       font_size_scale}, 
+       
+    { "GtkCellRendererAccel", "scale",
+       NULL,
+       { NULL },
+       NULL,
+       font_size_scale},    
+          
+    { "GtkCellRendererText", "rise",
+       "\tg_object_set(G_OBJECT(gui->%s),\"rise\", %s, NULL);\n",
+       { "name","rise", NULL },
+       NULL,
+       NULL},  
+       
+    { "GtkCellRendererSpin", "rise",
        "\tg_object_set(G_OBJECT(gui->%s),\"rise\", %s, NULL);\n",
        { "name","rise", NULL },
        NULL,
        NULL},   
+       
+    { "GtkCellRendererCombo", "rise",
+       "\tg_object_set(G_OBJECT(gui->%s),\"rise\", %s, NULL);\n",
+       { "name","rise", NULL },
+       NULL,
+       NULL},   
+       
+    { "GtkCellRendererAccel", "rise",
+       "\tg_object_set(G_OBJECT(gui->%s),\"rise\", %s, NULL);\n",
+       { "name","rise", NULL },
+       NULL,
+       NULL},      
        
     { "GtkCellRendererText", "alignment",
        NULL,
@@ -1019,12 +1196,48 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        renderer_text_align}, 
        
+    { "GtkCellRendererSpin", "alignment",
+       NULL,
+       { NULL },
+       NULL,
+       renderer_text_align}, 
+       
+    { "GtkCellRendererCombo", "alignment",
+       NULL,
+       { NULL },
+       NULL,
+       renderer_text_align}, 
+       
+    { "GtkCellRendererAccel", "alignment",
+       NULL,
+       { NULL },
+       NULL,
+       renderer_text_align},    
+       
     { "GtkCellRendererText", "wrap_mode",
        NULL,
        { NULL },
        NULL,
        label_label_wrap},     
        
+    { "GtkCellRendererSpin", "wrap_mode",
+       NULL,
+       { NULL },
+       NULL,
+       label_label_wrap},     
+       
+    { "GtkCellRendererCombo", "wrap_mode",
+       NULL,
+       { NULL },
+       NULL,
+       label_label_wrap},     
+       
+    { "GtkCellRendererAccel", "wrap_mode",
+       NULL,
+       { NULL },
+       NULL,
+       label_label_wrap},     
+          
     { "GtkCellRendererSpin", "text",
        NULL,
        { NULL },
@@ -1079,29 +1292,59 @@ static g2cSpecialHandler special_handlers[] =
        NULL,
        NULL}, 
        
-     { "GtkCellRendererToggle", "width",
-       "\tg_object_set(G_OBJECT(gui->%s),\"width\", %s, NULL);\n",
-       { "name","width", NULL },
-       NULL,
-       NULL}, 
+//     { "GtkCellRendererToggle", "width",
+//       "\tg_object_set(G_OBJECT(gui->%s),\"width\", %s, NULL);\n",
+//       { "name","width", NULL },
+//       NULL,
+//       NULL}, 
        
     { "GtkCellRendererToggle", "inconsistent",
        "\tg_object_set(G_OBJECT(gui->%s),\"inconsistent\", %s, NULL);\n",
        { "name","inconsistent", NULL },
        NULL,
-       NULL}, 
+       NULL},
+       
+    { "GtkCellRendererText", "cell_background_rgba",
+       NULL,
+       { NULL },
+       NULL,
+       cell_background_rgb},   
+       
+    { "GtkCellRendererSpin", "cell_background_rgba",
+       NULL,
+       { NULL },
+       NULL,
+       cell_background_rgb},    
+       
+    { "GtkCellRendererCombo", "cell_background_rgba",
+       NULL,
+       { NULL },
+       NULL,
+       cell_background_rgb}, 
        
     { "GtkCellRendererToggle", "cell_background_rgba",
        NULL,
        { NULL },
        NULL,
-       background_rgb}, 
+       cell_background_rgb}, 
        
      { "GtkCellRendererPixbuf", "cell_background_rgba",
        NULL,
        { NULL },
        NULL,
-       background_rgb},  
+       cell_background_rgb},
+       
+    { "GtkCellRendererAccel", "cell_background_rgba",
+       NULL,
+       { NULL },
+       NULL,
+       cell_background_rgb},    
+    
+    { "GtkCellRendererCombo", "cell_background",
+       "\tg_object_set(G_OBJECT(gui->%s),\"cell-background\", \"%s\", NULL);\n",
+       { "name","cell_background", NULL },
+       NULL,
+       NULL}, 
        
     { "GtkCellRendererCombo", "background_rgba",
        NULL,
@@ -1149,19 +1392,49 @@ static g2cSpecialHandler special_handlers[] =
        "\tg_object_set(G_OBJECT(gui->%s),\"keycode\", %s, NULL);\n",
        { "name","keycode", NULL },
        NULL,
-       NULL},  
+       NULL},
+       
+    { "GtkCellRendererAccel", "cell_background",
+       "\tg_object_set(G_OBJECT(gui->%s),\"cell-background\", \"%s\", NULL);\n",
+       { "name","cell_background", NULL },
+       NULL,
+       NULL},    
        
     { "GtkCellRendererPixbuf", "icon_name",
-       "\tg_object_set(G_OBJECT(gui->%s),\"icon_name\", %s, NULL);\n",
+       "\tg_object_set(G_OBJECT(gui->%s),\"icon-name\", %s, NULL);\n",
        { "name","$icon_name", NULL },
        NULL,
        NULL}, 
        
-    { "GtkCellRendererText", "markup",
+    { "GtkCellRendererPixbuf", "cell_background",
+       "\tg_object_set(G_OBJECT(gui->%s),\"cell-background\", \"%s\", NULL);\n",
+       { "name","cell_background", NULL },
        NULL,
-       {  NULL },
-       NULL,
-       other_markup},    
+       NULL}, 
+       
+    { "GtkCellRendererPixbuf", "pixbuf",
+      NULL,
+      { NULL },
+      NULL,
+      renderer_pixbuf },
+       
+    { "GtkCellRendererPixbuf", "stock_id",
+      "\tg_object_set(G_OBJECT(gui->%s),\"stock-id\", %s, NULL);\n",
+      { "name","$stock_id", NULL },
+      NULL,
+      NULL },
+      
+    { "GtkCellRendererPixbuf", "stock_size",
+      NULL,
+      { NULL },
+      NULL,
+      renderer_from_stock }, 
+      
+    { "GtkCellRendererPixbuf", "stock_detail",
+      "\tg_object_set(G_OBJECT(gui->%s),\"stock-detail\", %s, NULL);\n",
+      { "name","$stock_detail", NULL },
+      NULL,
+      NULL },   
       
     { "GtkCheckButton", "label",
       NULL,
@@ -2644,6 +2917,12 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       view_column_alignment},
       
+    { "GtkTreeViewColumn", "sort_column_id",
+      NULL,
+      { NULL },
+      NULL,
+      column_sort_id},  
+      
     { "GtkTreeViewColumn", "sort_order",
       "\tgtk_tree_view_column_set_sort_order (GTK_TREE_VIEW_COLUMN (gui->%s),\n"
             "\t\t\tGTK_SORT_DESCENDING);\n",
@@ -2795,7 +3074,7 @@ static g2cCommonParam common_params[] =
     {"font",FALSE,"char",NULL},
     {"max_width_chars",FALSE,"int",NULL},
     {"width_chars",FALSE,"int",NULL},
-//    {"wrap_mode",FALSE,"PANGO_WRAP",NULL},
+//    {"wrap_mode",FALSE,"PANGO_WRAP",NULL},  /*  also GTK_WRAP  */
     {"wrap_width",FALSE,"int",NULL},
     {"single_paragraph_mode", FALSE,NULL, NULL},
     {"family", FALSE, "char",NULL},
@@ -2803,6 +3082,7 @@ static g2cCommonParam common_params[] =
     {"weight",FALSE,"int",NULL},
     {"stretch",FALSE,"PANGO_STRETCH", NULL},
     {"strikethrough",FALSE,NULL,NULL},
+    {"style", FALSE, "PANGO_STYLE", NULL},
     {"underline",FALSE,"PANGO_UNDERLINE",NULL},
     {"ellipsize",FALSE,"PANGO_ELLIPSIZE",NULL},
     {"enable_emoji_completion",FALSE,NULL,NULL},
@@ -2817,10 +3097,11 @@ static g2cCommonParam common_params[] =
     {"height_request", FALSE, NULL, NULL},
     {"width_request", FALSE, NULL, NULL},
     {"height", FALSE, NULL, NULL},
+    {"width", FALSE, NULL, NULL},
     {"has_entry", FALSE, NULL, NULL},
     {"hexpand", TRUE,  NULL, NULL},
     {"vexpand", TRUE,  NULL, NULL},
-    {"sensitive", TRUE, NULL, NULL},
+    {"sensitive", FALSE, NULL, NULL},
     {"has_focus", FALSE,  NULL, NULL},
     {"is_focus", FALSE,  NULL, NULL},
     {"inconsistent", FALSE, NULL, NULL},
@@ -3014,56 +3295,36 @@ gchar *text = NULL;
 void background_rgb ( g2cWidget *widget )
 {
 gchar *rgb = NULL;
-gchar *cell_rgb = NULL;
+//gchar *cell_rgb = NULL;
 
     g_assert( NULL != widget );
     rgb = g2c_widget_get_property( widget, "background_rgba" );
     if (rgb != NULL) {
-    fprintf( CURRENT_FILE,
-            "\tgdk_rgba_parse(&rgb_%s, \"%s\");\n",
-            widget->name, rgb);
-    fprintf( CURRENT_FILE,
-            "\tg_object_set(G_OBJECT(gui->%s),\"background-rgba\", &rgb_%s, NULL);\n",
-            widget->name, widget->name);
-    }  else {
-       rgb = g2c_widget_get_property( widget, "cell_background_rgba" );
-       if (rgb != NULL ) {
-           fprintf( CURRENT_FILE,
-                   "\tgdk_rgba_parse(&rgb_%s, \"%s\");\n",
-                   widget->name, rgb);
-           fprintf( CURRENT_FILE,
-                   "\tg_object_set(G_OBJECT(gui->%s),\"cell-background-rgba\", &rgb_%s, NULL);\n",
-                   widget->name, widget->name);
-       }
-    }
+        fprintf( CURRENT_FILE,
+                "\tgdk_rgba_parse(&rgb_%s, \"%s\");\n",
+                widget->name, rgb);
+        fprintf( CURRENT_FILE,
+                "\tg_object_set(G_OBJECT(gui->%s),\"background-rgba\", &rgb_%s, NULL);\n",
+                widget->name, widget->name);
+    }  
 }
 
 
 void cell_background_rgb ( g2cWidget *widget )
 {
-gchar *rgb = NULL;
+//gchar *rgb = NULL;
 gchar *cell_rgb = NULL;
 
     g_assert( NULL != widget );
-//    rgb = g2c_widget_get_property( widget, "background_rgba" );
-//    if (rgb != NULL) {
-//    fprintf( CURRENT_FILE,
-//            "\tgdk_rgba_parse(&rgb_%s, \"%s\");\n",
-//            widget->name, rgb);
-//    fprintf( CURRENT_FILE,
-//            "\tg_object_set(G_OBJECT(gui->%s),\"background-rgba\", &rgb_%s, NULL);\n",
-//            widget->name, widget->name);
-//    } else {
-        rgb = g2c_widget_get_property( widget, "cell_background_rgba" );
-        if (rgb != NULL ) {
-            fprintf( CURRENT_FILE,
-                    "\tgdk_rgba_parse(&rgb_%s, \"%s\");\n",
-                    widget->name, rgb);
-            fprintf( CURRENT_FILE,
-                    "\tg_object_set(G_OBJECT(gui->%s),\"cell-background-rgba\", &rgb_%s, NULL);\n",
-                    widget->name, widget->name);
-        }
-    //}
+    cell_rgb = g2c_widget_get_property( widget, "cell_background_rgba" );
+    if (cell_rgb != NULL ) {
+        fprintf( CURRENT_FILE,
+                "\tgdk_rgba_parse(&cellrgb_%s, \"%s\");\n",
+                widget->name, cell_rgb);
+        fprintf( CURRENT_FILE,
+                "\tg_object_set(G_OBJECT(gui->%s),\"cell-background-rgba\", &cellrgb_%s, NULL);\n",
+                widget->name, widget->name);
+    }
 }
 
 void font_size_scale ( g2cWidget *widget )
@@ -3108,6 +3369,22 @@ gchar *level = NULL;
     fprintf( CURRENT_FILE,
             "\tgtk_font_chooser_set_level(GTK_FONT_CHOOSER(gui->%s),%s);\n",
             widget->name, level);
+}
+
+void column_sort_id( g2cWidget *widget )
+{
+gchar *column_id = NULL;
+gchar *sort_indicator = NULL;
+
+    g_assert( NULL != widget );
+    sort_indicator = g2c_widget_get_property( widget, "sort_indicator" );
+    if (sort_indicator != NULL) {  /* only appears if TRUE  */
+        column_id = g2c_widget_get_property( widget, "sort_column_id" );
+        fprintf( CURRENT_FILE,
+            "\tgtk_tree_view_column_set_sort_column_id(GTK_TREE_VIEW_COLUMN(gui->%s), %s);\n",
+                widget->name, column_id );
+    } 
+
 }
 
 void view_column_alignment ( g2cWidget *widget )
@@ -3743,17 +4020,22 @@ gboolean underline = FALSE;
     g_free( label );
 }
 
-void other_markup( g2cWidget *widget )
+void renderer_markup( g2cWidget *widget )
 {
 gchar *markup = NULL;
 gchar *string_markup = NULL;
 
-    if (strcmp(widget->klass_name,"GtkCellRendererText") == 0) {
+    if ( (strcmp(widget->klass_name,"GtkCellRendererText") == 0) || 
+         (strcmp(widget->klass_name,"GtkCellRendererSpin") == 0) ||
+         (strcmp(widget->klass_name,"GtkCellRendererCombo") == 0) ||
+         (strcmp(widget->klass_name,"GtkCellRendererAccel") == 0) )
+    {
         markup = g2c_widget_get_property( widget, "markup" );
         string_markup = g2c_stringify(g_strdelimit(markup,"\"",'\''));
         fprintf( CURRENT_FILE,
            "\tg_object_set(G_OBJECT(gui->%s),\"markup\", %s, NULL);\n",
                 widget->name, string_markup );
+        g_free( string_markup ); 
                
     }
 //    if (strcmp(widget->klass_name,"GtkModelButton") == 0) {
@@ -3765,7 +4047,7 @@ gchar *string_markup = NULL;
 //                widget->name, string_markup );
 //        }
 //    }
-    g_free( string_markup ); 
+    
 }
 
 void label_label_wrap ( g2cWidget *widget )
@@ -3780,7 +4062,10 @@ gchar *wrap_enum = NULL;
                 "\tgtk_label_set_line_wrap_mode(GTK_LABEL(gui->%s), %s);\n",
                  widget->name,
                  wrap_enum);
-    } else if (strcmp(widget->klass_name,"GtkCellRendererText") == 0) {
+    } else if ( (strcmp(widget->klass_name,"GtkCellRendererText") == 0) || 
+                (strcmp(widget->klass_name,"GtkCellRendererSpin") == 0) ||
+                (strcmp(widget->klass_name,"GtkCellRendererCombo") == 0) ||
+                (strcmp(widget->klass_name,"GtkCellRendererAccel") == 0) ) {
         fprintf( CURRENT_FILE,
                 "\tg_object_set(G_OBJECT(gui->%s),\"wrap-mode\",  %s, NULL);\n",
                  widget->name,
@@ -4466,6 +4751,10 @@ g2cWidget *column_widget = NULL;
    g_assert( NULL != widget );
    col_no = g2c_widget_get_property( widget, "text" );
    if (col_no == NULL) return;
+   if (!isinteger(col_no)) {
+       g_message("'Text' in %s should be the number of a liststore column and cannot be %s.\n", widget->name, col_no);
+       return;
+   }
    column_widget = widget->parent;   
    if (strcmp(column_widget->klass_name, "GtkComboBox") == 0 )
    {
@@ -4893,10 +5182,10 @@ gchar * file_name = NULL;
 gchar * file_name2 = NULL;
     file_name = g2c_widget_get_property( widget, "secondary_icon_pixbuf" );  
     g_assert(NULL != file_name );
-    file_name2 = g_strdelimit(file_name, "\\", '/');
+    file_name2 = g2c_stringify( g_strdelimit(file_name, "\\", '/') );
     fprintf( CURRENT_FILE,
            "\tpixbuf_%s = gdk_pixbuf_new_from_file( %s, &error_%s );\n",
-           widget->name, g2c_stringify(file_name2), widget->name); 
+           widget->name, file_name2, widget->name); 
     fprintf( CURRENT_FILE,"\tif (pixbuf_%s == NULL) {\n", widget->name);
     fprintf( CURRENT_FILE,"\t\tg_print(\"pixbuf error %%s \\n\", error_%s->message );\n ",
             widget->name);
@@ -4904,7 +5193,55 @@ gchar * file_name2 = NULL;
     fprintf( CURRENT_FILE,"\t}\n");
     fprintf( CURRENT_FILE,
            "\tgtk_entry_set_icon_from_pixbuf(GTK_ENTRY(gui->%s), GTK_ENTRY_ICON_SECONDARY, pixbuf_%s);\n", 
-            widget->name, widget->name);    
+            widget->name, widget->name);
+    g_free( file_name2 );    
+}
+
+void renderer_pixbuf( g2cWidget *widget )
+{
+gchar * file_name = NULL;
+gchar * file_name2 = NULL;
+    file_name = g2c_widget_get_property( widget, "pixbuf" );  
+    g_assert(NULL != file_name );
+    file_name2 = g2c_stringify( g_strdelimit(file_name, "\\", '/') );
+    /* widget_pixbuf set up in g2c_widget_create_temp_declaration_cb  */
+    fprintf( CURRENT_FILE,
+           "\t%s_pixbuf = gdk_pixbuf_new_from_file( %s, &%s_error );\n",
+           widget->name, file_name2, widget->name); 
+    fprintf( CURRENT_FILE,"\tif (%s_pixbuf == NULL) {\n", widget->name);
+    fprintf( CURRENT_FILE,"\t\tg_print(\"pixbuf error %%s \\n\", %s_error->message );\n ",
+            widget->name);
+    fprintf( CURRENT_FILE,"\t\treturn NULL;\n");
+    fprintf( CURRENT_FILE,"\t}\n");
+    fprintf( CURRENT_FILE,
+           "\tg_object_set(G_OBJECT(gui->%s), \"pixbuf\", %s_pixbuf, NULL);\n", 
+            widget->name, widget->name); 
+    g_free( file_name2 );   
+}
+
+void renderer_from_stock( g2cWidget *widget )
+{
+gchar * stock_name = NULL;
+gchar * stock_size = NULL;
+gchar * size_enum = NULL;
+
+    g_assert( NULL != widget );
+    stock_name = g2c_widget_get_property( widget, "stock_id" );
+    if (stock_name == NULL) {
+        stock_name = g2c_widget_get_property( widget, "icon_name" );
+    }
+    stock_size = g2c_widget_get_property( widget, "stock_size" );
+//    if (stock_name != NULL )  
+//        fprintf( CURRENT_FILE,
+//               "\tg_object_set(G_OBJECT(gui->%s), \"stock-id\", \"%s\", NULL);\n", 
+//                widget->name, stock_name); 
+    if (stock_size != NULL) { 
+       size_enum = icon_size_enum(stock_size); 
+       fprintf( CURRENT_FILE,
+           "\tg_object_set(G_OBJECT(gui->%s), \"stock-size\", %s, NULL);\n", 
+            widget->name,  size_enum); 
+       g_free( size_enum );
+    }    
 }
 
 //void image_from_pixbuf( g2cWidget *widget )
@@ -5451,6 +5788,33 @@ void create_gtk_popovermenu( g2cWidget *widget )
 //    } 
 }
 
+void create_gtk_cellrendererpixbuf( g2cWidget *widget )
+{
+g2cWidget *column_widget = NULL;    
+gchar * col_no;
+
+    fprintf( CURRENT_FILE,
+               "\tgui->%s = (GtkCellRendererPixbuf*) gtk_cell_renderer_pixbuf_new ();\n",
+               widget->name);
+               
+    fprintf( CURRENT_FILE,
+               "\tgtk_tree_view_column_pack_start(GTK_TREE_VIEW_COLUMN(gui->%s), GTK_CELL_RENDERER(gui->%s), TRUE);\n",
+               widget->parent->name,
+               widget->name);
+    column_widget = widget->parent;
+    col_no = g2c_widget_get_property( column_widget, "sort_column_id");
+    
+    if (col_no != NULL) {
+        fprintf( CURRENT_FILE,
+           "\tgtk_tree_view_column_add_attribute(GTK_TREE_VIEW_COLUMN(gui->%s), GTK_CELL_RENDERER(gui->%s), \"pixbuf\", %s);\n",
+           column_widget->name,
+           widget->name,
+           col_no);
+    } else {        
+        g_message("** No list store pixbuf column bound to TreeView column '%s'\n", 
+                    g2c_widget_get_property(column_widget,"title") );        
+    }
+}
 
 void create_gtk_cellrenderertoggle( g2cWidget *widget )
 {
@@ -5458,20 +5822,19 @@ gchar *active = NULL;
 g2cWidget *column_widget = NULL;
 gchar *activatable = NULL;
 gchar * col_no;
+gint icol = 0;
 
     active = g2c_widget_get_property( widget, "active" );
     activatable = g2c_widget_get_property( widget, "activatable" ); 
-    //if (active == NULL) active = "FALSE";  -- if active is FALSE it does not appear in the glade file
-    //gtk_tree_view_column_pack_start(GTK_TREE_VIEW_COLUMN(gui->col3), GTK_CELL_RENDERER(gui->cellrenderertoggle1), TRUE);
-    //gtk_tree_view_column_add_attribute(GTK_TREE_VIEW_COLUMN(gui->col3), GTK_CELL_RENDERER(gui->cellrenderertoggle1), "active", col_no);
-    //gtk_cell_renderer_toggle_set_active(GTK_CELL_RENDERER_TOGGLE(gui->cellrenderertoggle1),TRUE );
-    // see pack_renderer
+    // if active is FALSE it doesn't appear in the glade file (but it should be ignored)
+    // if activatable is TRUE it doesn't appear in the glade file
+    //gtk_tree_view_column_pack_start connects the cellrenderer to the column of the TreeView
+    //gtk_tree_view_column_add_attribute with the "active" attribute binds the column to a column in the list store
+    //gtk_cell_renderer_toggle_set_active is nugatory because the active state will be determined by the list store.
+    // see pack_renderer for bindings of other kinds of cellrenderer
     column_widget = widget->parent;      
     col_no = g2c_widget_get_property( column_widget, "sort_column_id");
     
-    if (strcmp("0",col_no) == 0) {
-        g_message("Is the model column no in the treecolumn sort column id really zero?\n");
-    }
     fprintf( CURRENT_FILE,
                "\tgui->%s = (GtkCellRendererToggle*) gtk_cell_renderer_toggle_new ();\n",
                widget->name);
@@ -5480,21 +5843,32 @@ gchar * col_no;
            "\tgtk_tree_view_column_pack_start(GTK_TREE_VIEW_COLUMN(gui->%s), GTK_CELL_RENDERER(gui->%s), TRUE);\n",
            column_widget->name,
            widget->name);
-    //if ( (activatable != NULL) && (strcmp(activatable,"TRUE") == 0) )
-    //{    
+    
+    if (activatable != NULL) {
+       fprintf( CURRENT_FILE,
+           "\tgtk_cell_renderer_toggle_set_activatable(GTK_CELL_RENDERER_TOGGLE(gui->%s), FALSE);\n",
+           widget->name); 
+    }
+        
+//    fprintf( CURRENT_FILE,
+//           "\tgtk_cell_renderer_toggle_set_active(GTK_CELL_RENDERER_TOGGLE(gui->%s), %s);\n",
+//           widget->name,
+//           (active == NULL)? "FALSE": g_utf8_strup(active, strlen(active)));
+    if (col_no != NULL) {
         fprintf( CURRENT_FILE,
-               "\tgtk_cell_renderer_toggle_set_active(GTK_CELL_RENDERER_TOGGLE(gui->%s), %s);\n",
-               widget->name,
-               (active == NULL)? "FALSE": g_utf8_strup(active, strlen(active)));
-        if (col_no != NULL) {
-            fprintf( CURRENT_FILE,
-               "\tgtk_tree_view_column_add_attribute(GTK_TREE_VIEW_COLUMN(gui->%s), GTK_CELL_RENDERER(gui->%s), \"active\", %s);\n",
-               column_widget->name,
-               widget->name,
-               col_no);
+           "\tgtk_tree_view_column_add_attribute(GTK_TREE_VIEW_COLUMN(gui->%s), GTK_CELL_RENDERER(gui->%s), \"active\", %s);\n",
+           column_widget->name,
+           widget->name,
+           col_no);
+    } else {
+        col_no = g2c_widget_get_property( widget, "text" );   // see pack_renderer
+        if (col_no == NULL) {
+            g_message("** No list store column bound to TreeView column '%s'\n", 
+                    g2c_widget_get_property(column_widget,"title") );
         }
+    }
 
-    //}
+    
 }
 
 void 
@@ -7801,6 +8175,12 @@ g2c_widget_create_temp_declaration_cb( gpointer data,
   {
       pixbuf = TRUE;
   }
+  if ( ( strcmp( widget->klass_name, "GtkCellRendererPixbuf" ) == 0 ) &&
+       ( g2c_widget_get_property( widget, "pixbuf" ) != NULL ) )
+  {
+     pixbuf = TRUE; 
+  }
+  
   if (pixbuf == TRUE ) 
   {
       fprintf( CURRENT_FILE,
@@ -7830,11 +8210,16 @@ g2c_widget_create_temp_declaration_cb( gpointer data,
       ( strcmp( widget->klass_name, "GtkCellRendererPixbuf" ) == 0 ) ||
       ( strcmp( widget->klass_name, "GtkTextTag" ) == 0 ) )    
   { 
-        if ((g2c_widget_get_property( widget, "background_rgba") != NULL ) || 
-            (g2c_widget_get_property( widget, "cell_background_rgba") != NULL ) )
+        if (g2c_widget_get_property( widget, "background_rgba") != NULL )               
         {
           fprintf( CURRENT_FILE,
                      "GdkRGBA rgb_%s;\n",
+                     widget->name );
+        }
+        if (g2c_widget_get_property( widget, "cell_background_rgba") != NULL ) 
+        {
+          fprintf( CURRENT_FILE,
+                     "GdkRGBA cellrgb_%s;\n",
                      widget->name );
         }
         if (g2c_widget_get_property( widget, "foreground_rgba") != NULL ) 

@@ -739,13 +739,22 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
                       parse_packing( doc, subwidget );   // process chain of packing properties to the end
                       /* on exit doc->current will always be NULL */
                   } else if ( strcmp( get_node_name( node ), "attributes" ) == 0 ) {
-                      doc->current = get_first_child(node);   // first and only attribute
-                      if ( strcmp( get_node_name( doc->current ), "attribute" ) == 0 ) {
-                          attr = doc->current->properties;                                                                                
-                          g2c_widget_set_property( subwidget, get_attr_node_text( attr ), 
-                                       get_node_text( doc->current ) );                               
-                          
+                      doc->current = get_first_child(node);   // first [and only] attribute
+                      while (doc->current != NULL) {
+                        if ( strcmp( get_node_name( doc->current ), "attribute" ) == 0 ) {
+                            attr = doc->current->properties;
+                            if (attr != NULL) {
+                                g2c_widget_set_property( subwidget, 
+                                    g_strdelimit( (gchar *) get_attr_node_text( attr ), "-",'_'), 
+                                    get_node_text( doc->current ) ); 
+                            }
+                        }
+                        /*  step to next attribute   */
+                        doc->current = get_next_node(doc->current);
                       }
+                     /* it is possible for this not to be the only attribute here, 
+                      * and that would be due to an incorrect setting in Glade. 
+                      * We convert them to properties anyway.  */
                   }
               }
           } else {
@@ -963,14 +972,14 @@ xmlNodePtr temp_node = NULL;
 gchar   *data   = NULL;
 GList   *attributes = NULL;
 xmlAttrPtr attr = NULL;
-gchar *attr2 = NULL;
+//gchar *attr2 = NULL;
 gchar *name = NULL;
 gchar *value = NULL;
 
 
     child_node = get_first_child(node); 
     while (child_node != NULL) {   
-        attr2 = (gchar *) get_node_name( child_node );
+        //attr2 = (gchar *) get_node_name( child_node );
         g_assert( strcmp( get_node_name( child_node ), "attribute" ) == 0 ); 
           attr = child_node->properties;
           if (attr != NULL) {
@@ -985,8 +994,7 @@ gchar *value = NULL;
              }
              attrlist_add(widget, g_strdelimit(name, "-",'_'), value);
           } 
-         //data = g_strdup( get_node_text( child_node ) );                    
-         //attributes = g_list_append(attributes, data );           
+                 
          /*  step to next attribute   */
          child_node = get_next_node(child_node);          
     }

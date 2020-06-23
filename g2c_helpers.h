@@ -71,6 +71,8 @@ gboolean has_underscore (gchar *string);
 
 gboolean isnumber(gchar *text);
 
+gboolean isinteger(gchar *text);
+
 gboolean isalphanum(gchar *text);
 
 gchar *remove_prefix(gchar * string);
