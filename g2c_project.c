@@ -16,8 +16,6 @@ g2cWidget *widget = NULL;
     {
       widget = (g2cWidget *) data;      
       g2c_widget_destroy( widget );
-
-      //g_free (data);
     }
   else
     g_message ("Memory deallocation failure in free_children\n");
@@ -33,9 +31,7 @@ g2c_project_new( void )
 
   allocs = 0;
 
-  //project->properties = g_hash_table_new( g_str_hash,
-  //                                        g_str_equal );
-  project->properties = NULL;
+  //project->properties = NULL;
 
   project->top_level_widgets    = NULL;
   project->dialogue_widgets     = NULL;
@@ -50,6 +46,8 @@ g2c_project_new( void )
   project->output_main_file     = TRUE;
   project->output_support_files = TRUE;
   project->output_build_files   = TRUE;
+  project->resource_file        = NULL;
+  project->resource_list        = NULL;
 
 
   return project;
@@ -68,12 +66,15 @@ g2c_project_destroy( g2cProject *project )
   
   g_list_free( project->dialogue_widgets );
   
+  g_list_free( project->resource_list );
+  
   if( NULL != project->name              ) g_free( project->name );
   if( NULL != project->program_name      ) g_free( project->program_name );
   if( NULL != project->directory         ) g_free( project->directory );  
   if( NULL != project->source_directory  ) g_free( project->source_directory );
   if( NULL != project->source_file       ) g_free( project->source_file );
   if( NULL != project->pixmaps_directory ) g_free( project->pixmaps_directory );
+  if( NULL != project->resource_file     ) g_free( project->resource_file );
  
   g_free( project );
   
@@ -122,22 +123,7 @@ g2c_project_set_property( g2cProject *project,
     {
       project->output_build_files = g2c_get_bool( value );
     }
-//  else
-//    {
-//      g_hash_table_insert( project->properties,
-//                           g_strdup( name ),
-//                           g_strdup( value ) );
-//    }
 }
-
-//const gchar *
-//g2c_project_get_property( g2cProject *project,
-//                          const gchar *name )
-//{
-//  //return g_hash_table_lookup( project->properties,
-//  //                            name );
-//    
-//}
 
 void
 g2c_project_add_top_level_widget( g2cProject *project,

@@ -49,6 +49,7 @@ static void       output_widget_gui_c( g2cWidget *widget, g2cDoc *doc, g2cWidget
 static void       output_widget_h( g2cWidget *widget, g2cDoc *doc );
 static void       output_widget_c( g2cWidget *widget, g2cDoc *doc );
 static void       output_cmake_file(g2cDoc *doc);
+static void       output_resource_file( g2cWidget *main_widget, g2cDoc *doc );
 static void       output_data_create(g2cDoc *doc, g2cWidget *widget,  FILE  *file);
 static void       output_signal_connect( g2cWidget *widget,  FILE *file );
 static void       output_signal_prototype( g2cWidget *widget, FILE *file );
@@ -70,7 +71,7 @@ static void       output_model_enum(g2cWidget* widget, FILE  *file);
 static void       output_model_populater(g2cWidget* widget, gchar* type_name, FILE *file);
 static void       output_paned_pack_child ( g2cWidget *widget, FILE* file );
 static void       output_toolbar_widget( g2cWidget *widget, FILE *file );
-static void       output_style( g2cWidget *widget, gchar *css_class, gint index);
+static void       output_style( g2cWidget *widget);
 static void       handle_file_compare( gchar *temp_file_name, gchar *file_name );
 
 
@@ -484,6 +485,9 @@ g2c_doc_output( g2cDoc *doc )
   if (doc->project->gen_cmake == TRUE) {
     output_cmake_file(doc);
   }
+  if (doc->project->resource_list != NULL) {
+    output_resource_file( main_widget, doc );
+  }
   g_free( DIR_PREFIX );
   if (CURRENT_SOURCE_PARSER != NULL) 
     g2c_file_parser_destroy (CURRENT_SOURCE_PARSER);
@@ -599,6 +603,7 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
   gboolean   binternal   = FALSE;
   gboolean   boverlay    = FALSE;
   gboolean   bexpand     = FALSE;
+  gboolean   bcenter     = FALSE;
   gchar     *text        = NULL;
   gchar     *css_text    = NULL;
   gchar     *comment     = NULL;
@@ -702,6 +707,9 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
                       pack_type = PACK_END;
                       //binternal = TRUE;
                   }
+                  if (strcmp(get_attr_node_text( attr ), "center") == 0) { 
+                      bcenter = TRUE;                  
+                  }
               }
               g_free( child_attr );
           }
@@ -717,7 +725,12 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
               }
               // POP returns here:
               g2c_widget_add_subwidget( widget, subwidget );
-              g2c_widget_set_order( subwidget, order++ );        
+              g2c_widget_set_order( subwidget, order++ );   
+              
+              if (bcenter == TRUE) {
+                  g2c_widget_set_property(subwidget,"_center", widget->name);
+                  bcenter = FALSE;
+              }
 
               doc->current = object_node;   // restore
               node = get_next_node(object_node);   // now packing node
@@ -770,8 +783,8 @@ parse_widget( g2cDoc *doc, g2cWidget *parent, gboolean internal, gboolean poverl
               g_assert( strcmp( get_node_name( child_node ), "class" ) == 0 );
               attr = child_node->properties;
               g_assert( strcmp( get_attr_node_name( attr ), "name" ) == 0 );
-              css_text = g_strdup( get_attr_node_text( attr ) );
-              widget->css_classes = g_list_append( widget->css_classes, css_text);
+              css_text =  g_strdup( get_attr_node_text( attr ) );              
+              widget->css_classes = g_list_append( widget->css_classes, g_strdelimit(css_text,"\"",'\''));
               child_node = get_next_node(child_node);
           }
           /*  node still points to the style element but its 'next' will be NULL and so will POP */
@@ -1106,6 +1119,14 @@ gchar *menu = NULL;
               if ( strcmp( get_attr_node_text( attr ), "homogeneous" ) == 0 ) { 
                   flag = ( strcmp( get_node_text( doc->current ), "True" ) == 0 );
                   widget->packing.box.homogeneous = ( flag ) ? TRUE : FALSE;
+              }
+              if ( strcmp( get_attr_node_text( attr ), "non_homogeneous" ) == 0 ) { 
+                  flag = ( strcmp( get_node_text( doc->current ), "True" ) == 0 );
+                  widget->packing.box.non_homogeneous = ( flag ) ? TRUE : FALSE;
+              }
+              if ( strcmp( get_attr_node_text( attr ), "secondary" ) == 0 ) { 
+                  flag = ( strcmp( get_node_text( doc->current ), "True" ) == 0 );
+                  widget->packing.box.secondary = ( flag ) ? TRUE : FALSE;
               }
               // position will be ignored
           }                           
@@ -2119,9 +2140,7 @@ g2cWidget *widget = NULL;
     
     fprintf( file, "add_library(lib1 OBJECT ${SOURCES} )\n");
     
-    if (doc->project->resource_file == NULL) {
-        fprintf( file, "add_executable( %s $<TARGET_OBJECTS:lib1> )\n", doc->project->program_name );
-    } else {
+    if (doc->project->resource_file != NULL) {
         fprintf( file, "set (CMAKE_RC_COMPILER \"/c/msys64/mingw64/bin/windres.exe\")\n");
         fprintf( file, "set (RC_SOURCE %s)\n", doc->project->resource_file);
         fprintf( file, "set (RC_OBJ ${RC_SOURCE}.obj)\n");
@@ -2130,6 +2149,17 @@ g2cWidget *widget = NULL;
         fprintf( file, "\t\tDEPENDS lib1\n");
         fprintf( file, "\t\t)\n");
         fprintf( file, "add_executable( %s ${RC_OBJ}  $<TARGET_OBJECTS:lib1> )\n", doc->project->program_name );
+    } else if (doc->project->resource_list != NULL) {
+        fprintf( file, "set (CMAKE_RESOURCE_COMPILER \"glib-compile-resources.exe\")\n" );
+        fprintf( file, "set (RESOURCE %s_res)\n", doc->project->main_widget->name);
+        fprintf( file, "set (RESXML ${RESOURCE}.gresource.xml)\n");
+        fprintf( file, "add_custom_command(OUTPUT ${RESOURCE}.c PRE_LINK \n");
+        fprintf( file, "\t\t\tCOMMAND ${CMAKE_RESOURCE_COMPILER} ARGS --generate-source ${RESXML}\n");
+        fprintf( file, "\t\t\tDEPENDS lib1 ${RESXML}\n");
+        fprintf( file, "\t\t\t)\n");
+        fprintf( file, "add_executable( %s ${RESOURCE}.c $<TARGET_OBJECTS:lib1> )\n", doc->project->program_name );        
+    } else {
+        fprintf( file, "add_executable( %s $<TARGET_OBJECTS:lib1> )\n", doc->project->program_name );
     }
 	
     g_free( file_name );
@@ -2374,6 +2404,53 @@ output_widget_c( g2cWidget *main_widget, g2cDoc *doc )
     
 }   /* end output_widget_c  */
 
+void 
+output_resource_file( g2cWidget *main_widget, g2cDoc *doc )
+{
+FILE  *file       = 0;
+gchar *file_name  = NULL;
+GList *run        = NULL;
+gchar *image_file = NULL;
+
+/* Write widget.gresource.xml
+   * 
+   *     <?xml version="1.0" encoding="UTF-8"?>
+   *       <gresources>
+   *         <gresource prefix="/images">
+   *           <file>filename1</file>
+   *           <file>filename2</file>
+   *            ...
+   *        </gresource>
+   *      </gresources>
+   *
+   *  
+   */
+  file_name = g_strconcat( DIR_PREFIX, "/", main_widget->name, "_res.gresource.xml", NULL );
+      
+  file = fopen( file_name, "w" );
+  if (file == NULL) {
+      g_message ("File %s could not be opened. %s\n", file_name, strerror(errno));
+      g_assert(file != NULL);  
+  }
+  CURRENT_FILE = file;
+
+  g_message( "Creating %s\n", file_name );
+   
+  fprintf( file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" );
+  fprintf( file, "\t<gresources>\n");
+  fprintf( file, "\t\t<gresource prefix=\"/images\">\n");
+  run = g_list_first( doc->project->resource_list );
+  while ( run != NULL ) {
+      image_file = (gchar *) run->data;
+      fprintf( file, "\t\t\t<file>%s</file>\n", image_file);
+      run = g_list_next( run );
+  }
+  fprintf( file, "\t\t</gresource>\n");
+  fprintf( file, "\t</gresources>\n");
+  
+  fclose( CURRENT_FILE ); 
+}
+
 static void
 output_model_enum(g2cWidget* widget, FILE  *file)
 {
@@ -2595,9 +2672,8 @@ output_widget_create( g2cWidget *widget,
                 }
               else if (( strcmp( widget->parent->klass_name, "GtkViewport"        ) == 0 ) ||
                        ( strcmp( widget->parent->klass_name, "GtkOffscreenWindow" ) == 0 ) ||
-                       ( strcmp( widget->parent->klass_name, "GtkAssiatant"       ) == 0 ) ||
-                       ( strcmp( widget->parent->klass_name, "GtkRevealer"        ) == 0 ) ||
-                       ( strcmp( widget->parent->klass_name, "GtkActionBar"       ) == 0 ) ||
+                       ( strcmp( widget->parent->klass_name, "GtkAssistant"       ) == 0 ) ||
+                       ( strcmp( widget->parent->klass_name, "GtkRevealer"        ) == 0 ) ||                       
                        ( strcmp( widget->parent->klass_name, "GtkListBoxRow"      ) == 0 ) ||
                        ( strcmp( widget->parent->klass_name, "GtkMenuButton"      ) == 0 ) ||
                        ( strcmp( widget->parent->klass_name, "GtkSearchBar"       ) == 0 ) ||
@@ -2608,6 +2684,20 @@ output_widget_create( g2cWidget *widget,
                         "\tgtk_container_add(GTK_CONTAINER(gui->%s), GTK_WIDGET(gui->%s));\n",
                         widget->parent->name,
                         widget->name);
+              }
+              else if  ( strcmp( widget->parent->klass_name, "GtkActionBar") == 0 )  {
+                 value = g2c_widget_get_property( widget,"_center");  /* Add center child set  */
+                 if (value == NULL) {
+                    fprintf( file,
+                        "\tgtk_container_add(GTK_CONTAINER(gui->%s), GTK_WIDGET(gui->%s));\n",
+                        widget->parent->name,
+                        widget->name); 
+                 } else {
+                    fprintf( file,
+                               "\tgtk_action_bar_set_center_widget(GTK_ACTION_BAR(gui->%s), GTK_WIDGET(gui->%s));\n",
+                               widget->parent->name,
+                               widget->name);  
+                 }
               }
               else if ( strcmp( widget->parent->klass_name, "GtkPaned" ) == 0 )  {
                   /* This is one of the two child widgets of a GtkPaned */
@@ -2769,7 +2859,10 @@ output_widget_create( g2cWidget *widget,
                       /*  Don't generate packing if the enclosure is a Box which is internal to a InfoBar */
                       if  (( strcmp( widget->klass_name, "GtkBox" ) == 0  ) &&
                           ( widget->internal == TRUE ) )  pack_create = FALSE;
-                         
+                      /*  Don't generate packing if the child is centred within the box */
+                      value = g2c_widget_get_property( widget,"_center");  /* Add center child set  */
+                      if (value != NULL) pack_create = FALSE;
+                      
                       if (pack_create == TRUE)
                       {
                       /* gtk_box_pack_end (GTK_BOX (the_parent), widget_name, expand, fill, padding); */
@@ -2788,6 +2881,35 @@ output_widget_create( g2cWidget *widget,
                                widget->packing.box.fill   ? "TRUE" : "FALSE",
                                widget->packing.box.padding );
                       g_free(pack_type);
+                    }  /*  Alternatively, the widget is centred in the container  */
+                    value = g2c_widget_get_property( widget,"_center");
+                    if (value != NULL) {
+                        if (( strcmp( widget->parent->klass_name, "GtkBox"       ) == 0  )  ||
+                            ( strcmp( widget->parent->klass_name, "GtkButtonBox" ) == 0  ) )
+                           {
+                            /*  ignores GtkInfoBar - content and action-area cannot be centred */
+                          fprintf( file,
+                               "\tgtk_box_set_center_widget(GTK_BOX(gui->%s),\n"
+                               "\t                          GTK_WIDGET(gui->%s));\n",
+                               widget->parent->name,
+                               widget->name);
+                        }  
+                    }
+                    if ( strcmp( widget->parent->klass_name, "GtkButtonBox" ) == 0 ) {
+                        if (widget->packing.box.secondary == TRUE) {
+                            fprintf( file,
+                               "\tgtk_button_box_set_child_secondary (GTK_BUTTON_BOX(gui->%s),\n" 
+	                       "\t                                    GTK_WIDGET(gui->%s), TRUE);\n",
+                               widget->parent->name,
+                               widget->name);     
+                        }
+                         if (widget->packing.box.non_homogeneous == TRUE) {
+                             fprintf( file,
+                               "\tgtk_button_box_set_child_non_homogeneous (GTK_BUTTON_BOX(gui->%s), \n"
+	                       "\t                                          GTK_WIDGET (gui->%s), TRUE);\n",
+                               widget->parent->name,
+                               widget->name);         
+                         }
                     }
                   }
                   else if( g_type_is_a( widget->parent->klass, GTK_TYPE_LAYOUT ) )
@@ -2965,14 +3087,8 @@ output_widget_create( g2cWidget *widget,
       proplist_end(proplist);
       /* output any css styles */
       
-      if (widget->css_classes != NULL) {
-         GList *css_class =  g_list_first(widget->css_classes);
-         gint index = 0;
-         while (css_class != NULL) {
-             index++;
-             output_style(widget, (gchar *) css_class->data, index);
-             css_class = css_class->next;
-         }
+      if (widget->css_classes != NULL) {        
+         output_style(widget);    
       }
   }
   if ((strcmp( widget->klass_name, "GtkComboBoxText" ) == 0 ) &&
@@ -3729,24 +3845,23 @@ output_main_file ( g2cDoc *doc, gchar *file_name, GList *topreglist )
   return;
 }   /*  output_main_file  */
 
-static void  output_style( g2cWidget *widget, gchar *css_class, gint index)
+static void  output_style( g2cWidget *widget)
 {
-/*
-    GtkCssProvider *provider1 = gtk_css_provider_new ();
-          gtk_css_provider_load_from_data (provider1, "css_class", -1, NULL);
-          gtk_style_context_add_provider (gtk_widget_get_style_context (GTK_WIDGET(gui->widget->name)),
-                GTK_STYLE_PROVIDER (provider1), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);  
-*/
+GList *css_class = NULL;
         fprintf( CURRENT_FILE,
-               "\tgtk_css_provider_load_from_data (%s_provider_%02d, \"%s\" , -1, NULL);\n",
-                widget->name,
-                index,
-                css_class);
+               "\tgtk_css_provider_load_from_data (%s_provider, ",
+                widget->name);
+        css_class =  g_list_first(widget->css_classes);
+        while (css_class != NULL) {            
+            fprintf( CURRENT_FILE, "\n\t\t\t\"%s\"", (gchar *) css_class->data);
+            css_class = css_class->next;
+        }
+            fprintf( CURRENT_FILE, ",\n\t\t\t -1, NULL);\n");
         fprintf( CURRENT_FILE,
                 "\tgtk_style_context_add_provider (gtk_widget_get_style_context (GTK_WIDGET(gui->%s)),\n",
                 widget->name);
         fprintf( CURRENT_FILE,
-                "\t\tGTK_STYLE_PROVIDER (%s_provider_%02d), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);\n",
-                widget->name, index);                 
+                "\t\tGTK_STYLE_PROVIDER (%s_provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);\n",
+                widget->name);                 
     
 }

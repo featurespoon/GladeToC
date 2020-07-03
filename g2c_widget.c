@@ -38,6 +38,7 @@ void calendar_set_display_options( g2cWidget *widget );
 void cell_background_rgb ( g2cWidget *widget );
 void colour_chooser_rgba ( g2cWidget *widget );
 void column_sort_id( g2cWidget *widget );
+void combobox_sensitivity( g2cWidget *widget );
 void common_tooltip_markup ( g2cWidget *widget );
 void common_events ( g2cWidget *widget );
 void dialog_type_hint ( g2cWidget *widget );
@@ -154,6 +155,7 @@ void create_gtk_scrolled_window( g2cWidget *widget );
 void create_gtk_separator ( g2cWidget *widget );
 void create_gtk_sizegroup ( g2cWidget *widget );
 void create_gtk_spin_button( g2cWidget *widget );
+void create_gtk_stack_switcher( g2cWidget *widget );
 void create_gtk_text_buffer( g2cWidget *widget );
 void create_gtk_tree_selection( g2cWidget *widget );
 void create_gtk_treemodel_filter( g2cWidget *widget );
@@ -391,6 +393,10 @@ static g2cCreateFunction create_functions[] =
     { "GtkSpinButton", NULL,
       { NULL },
       create_gtk_spin_button },
+      
+    { "GtkStackSwitcher", NULL,
+      { NULL },
+      create_gtk_stack_switcher },
 
     { "GtkText", "gtk_text_new (NULL, NULL)",
       { NULL },
@@ -468,6 +474,7 @@ static g2cAfterParam after_params[] =
     { "_page_complete" },
     { "_resize" },
     { "_shrink" },
+    { "_center" },
     { NULL }
   };
 
@@ -537,9 +544,11 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkCellRendererSpinner", "Editable"}, 
     { "GtkColorButton", "alpha" },
     { "GtkColorChooserDialog", "type" },
-    { "GtkComboBox", "has_entry" },
-    { "GtkComboBox", "model" },
+    { "GtkComboBox", "has_entry" },   /*  in create_gtk_combobox  */
+    { "GtkComboBox", "model" },       /*  in create_gtk_combobox  */
     { "GtkComboBox", "can_focus" },
+    { "GtkComboBox", "add_tearoffs" },   /*  deprecated  */
+    { "GtkComboBox", "tearoff_title" },  /*  deprecated  */
     { "GtkComboBoxText", "has_entry" }, 
     { "GtkDialog", "type" },
     { "GtkDialog", "has_resize_grip" },
@@ -567,7 +576,7 @@ static g2cIgnoreParam ignore_params[] =
     { "GtkImage", "image_type" },
     { "GtkImage", "image_width" },
     { "GtkImage", "image_height" }, 
-    { "GtkImage", "resource" },  /* deprecated  */
+    { "GtkImage", "resource" },  /* see create_gtk_image  */
     { "GtkImage", "pixbuf" },    /* see create_gtk_image  */
     { "GtkImage", "icon_name" }, /* see create_gtk_image  */
     { "GtkImageMenuItem", "label"},
@@ -784,12 +793,12 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       popover_submenu },  
     { "GtkButton", "height_request",
-      "\tg_object_set(G_OBJECT(gui->%s),\"height_request\", %s,NULL);\n",
+      "\tg_object_set(G_OBJECT(gui->%s),\"height-request\", %s,NULL);\n",
       { "name", "height_request", NULL },
       NULL,
       NULL },
     { "GtkButton", "width_request",
-      "\tg_object_set(G_OBJECT(gui->%s),\"width_request\", %s,NULL);\n",
+      "\tg_object_set(G_OBJECT(gui->%s),\"width-request\", %s,NULL);\n",
       { "name", "width_request", NULL },
       NULL,
       NULL },
@@ -1089,7 +1098,7 @@ static g2cSpecialHandler special_handlers[] =
        renderer_markup},   
          
     { "GtkCellRendererText", "width_chars",
-       "\tg_object_set(G_OBJECT(gui->%s),\"width_chars\", %s, NULL);\n",
+       "\tg_object_set(G_OBJECT(gui->%s),\"width-chars\", %s, NULL);\n",
        { "name","width_chars", NULL },
        NULL,
        NULL}, 
@@ -1482,7 +1491,31 @@ static g2cSpecialHandler special_handlers[] =
       "\tgtk_color_chooser_set_use_alpha (GTK_COLOR_CHOOSER (gui->%s), %s);\n",
       { "name", "use_alpha", NULL },
       NULL,
-      NULL },    
+      NULL },
+         
+    { "GtkComboBoxText", "active",
+      "\tgtk_combo_box_set_active (GTK_COMBO_BOX (gui->%s), %s);\n",
+      { "name", "active", NULL },
+      NULL,
+      NULL },
+      
+    { "GtkComboBoxText", "active_id",
+      "\tgtk_combo_box_set_active_id (GTK_COMBO_BOX (gui->%s), %s);\n",
+      { "name", "$active_id", NULL },
+      NULL,
+      NULL },  
+         
+    { "GtkComboBox", "button_sensitivity",
+      NULL,
+      {  NULL },
+      NULL,
+      combobox_sensitivity }, 
+      
+    { "GtkComboBox", "has_frame",
+      "\tg_object_set (G_OBJECT (gui->%s), \"has-frame\", %s, NULL);\n",
+      { "name", "has_frame", NULL },
+      NULL,
+      NULL },  
 
     { "GtkContainer", "border_width",
       "\tgtk_container_set_border_width (GTK_CONTAINER (gui->%s), %s);\n",
@@ -1754,6 +1787,18 @@ static g2cSpecialHandler special_handlers[] =
       NULL,
       shadow_type }, 
       
+    { "GtkHeaderBar", "has_subtitle",
+      "\tg_object_set(G_OBJECT(gui->%s), \"has-subtitle\", %s, NULL);\n",
+      { "name", "has_subtitle", NULL },
+      NULL,
+      NULL },   
+      
+    { "GtkHeaderBar", "spacing",
+      "\tg_object_set(G_OBJECT(gui->%s), \"spacing\", %s, NULL);\n",
+      { "name", "spacing", NULL },
+      NULL,
+      NULL },   
+      
     { "GtkIconView", "model",
       "\tgtk_icon_view_set_model(GTK_ICON_VIEW(gui->%s),  GTK_TREE_MODEL(gui->%s));\n",
       { "name", "model", NULL },
@@ -1814,11 +1859,11 @@ static g2cSpecialHandler special_handlers[] =
 //      NULL,
 //      image_from_pixbuf },
 //      
-//    { "GtkImage", "resource",   /*  ignored  */
+//    { "GtkImage", "resource",
 //      NULL,
 //      { NULL },
 //      NULL,
-//      image_from_pixbuf },  
+//      image_from_resource },  
       
      { "GtkImage", "stock",
       NULL,
@@ -2112,7 +2157,7 @@ static g2cSpecialHandler special_handlers[] =
       { "name", "icon_size", NULL },
       NULL,
       NULL },
-      
+        
     { "GtkStatusIcon", "file",
        "\tgtk_status_icon_set_from_file(GTK_STATUS_ICON(gui->%s), \"%s\");\n",
       { "name", "file", NULL },
@@ -3042,7 +3087,7 @@ static g2cSpecialHandler special_handlers[] =
          window_type },   
       
     { "GtkWindow", "width_request",
-      "\tg_object_set(G_OBJECT(gui->%s),\"width_request\", %s,NULL);\n",
+      "\tg_object_set(G_OBJECT(gui->%s),\"width-request\", %s,NULL);\n",
       { "name", "width_request", NULL },
       NULL,
       NULL }, 
@@ -3414,6 +3459,20 @@ gchar *adjustment = NULL;
             widget->name, adjustment);
 }
 
+void combobox_sensitivity( g2cWidget *widget )
+{
+gchar *sensitivity = NULL; 
+gchar *sensitivity1 = NULL; 
+    g_assert( NULL != widget );
+    
+    sensitivity = g2c_widget_get_property( widget, "button_sensitivity");
+    sensitivity1 = make_enumeral ("GTK_SENSITIVITY", sensitivity);
+    fprintf( CURRENT_FILE,
+         "\tgtk_combo_box_set_button_sensitivity(GTK_COMBO_BOX(gui->%s), %s);\n",
+         widget->name, sensitivity1); 
+    g_free( sensitivity1 );
+}
+
 void range_lower_sensitivity( g2cWidget *widget )
 {
 gchar *sensitivity = NULL; 
@@ -3425,6 +3484,7 @@ gchar *sensitivity1 = NULL;
     fprintf( CURRENT_FILE,
          "\tgtk_range_set_lower_stepper_sensitivity(GTK_RANGE(gui->%s), %s);\n",
          widget->name, sensitivity1);
+     g_free( sensitivity1 );
 }
 
 void range_upper_sensitivity( g2cWidget *widget )
@@ -3438,6 +3498,7 @@ gchar *sensitivity1 = NULL;
     fprintf( CURRENT_FILE,
          "\tgtk_range_set_upper_stepper_sensitivity(GTK_RANGE(gui->%s), %s);\n",
          widget->name, sensitivity1);
+     g_free( sensitivity1 );
 }
 
 void scale_button_icons ( g2cWidget *widget )
@@ -5290,11 +5351,11 @@ gchar * size_enum = NULL;
 //    simple_name = strrchr(file_name, '/'); 
 //    if (simple_name == NULL) {
 //       fprintf( CURRENT_FILE,
-//           "\tgtk_image_set_from_resource( GTK_IMAGE(gui->%s), %s );\n",
+//           "\tgtk_image_set_from_resource( GTK_IMAGE(gui->%s), /images/%s );\n",
 //           widget->name, g2c_stringify(file_name));
 //    } else {
 //       fprintf( CURRENT_FILE,
-//            "\tgtk_image_set_from_resource( GTK_IMAGE(gui->%s), %s );\n",
+//            "\tgtk_image_set_from_resource( GTK_IMAGE(gui->%s), /images/%s );\n",
 //           widget->name, g2c_stringify(simple_name+1)); 
 //    }
 //}
@@ -5686,6 +5747,7 @@ gchar *file_name = NULL;
 gchar *stock = NULL;
 gchar *icon_name = NULL;
 gchar *resource = NULL;
+gchar *simple_name = NULL;
 gchar *strsize = NULL;
 gchar *nsize = NULL;
     pixbuf = g2c_widget_get_property( widget, "pixbuf" );
@@ -5719,9 +5781,16 @@ gchar *nsize = NULL;
         /*  In GTK+ 3.0, resource files have been deprecated and replaced by CSS-like style sheets */
         file_name1 = g_strdelimit(resource, "\\", '/');
         file_name = g_strdelimit(file_name1, "\n", ' ');
-        fprintf ( CURRENT_FILE,
-                "\tgui->%s = (GtkImage*) gtk_image_new_from_resource\n\t (\"%s\");\n",
-                widget->name, file_name);
+        simple_name = strrchr(file_name, '/'); 
+        if (simple_name == NULL) {
+           fprintf( CURRENT_FILE,
+               "\tgui->%s = (GtkImage*) gtk_image_new_from_resource( \"/images/%s\" );\n",
+               widget->name, file_name);
+        } else {
+           fprintf( CURRENT_FILE,
+                "\tgui->%s = (GtkImage*) gtk_image_new_from_resource( \"/images/%s\" );\n",
+               widget->name, simple_name+1); 
+        }
         return;
     }
 }
@@ -6554,6 +6623,22 @@ gchar *selfvadjustment = NULL;
      g_free( selfvadjustment );
 }
 
+void create_gtk_stack_switcher( g2cWidget *widget )
+{
+gchar *orientation = NULL;
+
+    g_assert( NULL != widget );
+    orientation =  g2c_widget_get_property( widget, "orientation" ) ;
+    fprintf( CURRENT_FILE,
+           "\tgui->%s = (GtkStackSwitcher*) gtk_stack_switcher_new ();\n",
+             widget->name);
+    if (orientation != NULL) {   /*  only present if orientation is vertical  */
+         fprintf( CURRENT_FILE,
+               "\tgtk_orientable_set_orientation(GTK_ORIENTABLE(gui->%s), GTK_ORIENTATION_VERTICAL);\n",
+                 widget->name);
+    }
+}
+
 void create_gtk_paned ( g2cWidget *widget )
 {   
 gchar *orientation = NULL;
@@ -6940,6 +7025,8 @@ g2c_widget_new( gchar *class_name )
   widget->packing.box.fill = FALSE;
   widget->packing.box.padding = 0;
   widget->packing.box.pack_type = PACK_START;
+  widget->packing.box.secondary = FALSE;
+  widget->packing.box.non_homogeneous = FALSE;
   widget->packing.grid.height = 0;
   widget->packing.grid.width = 0;
   widget->packing.grid.left_attach = 0;
@@ -7378,6 +7465,8 @@ g2c_widget_set_property( g2cWidget *widget,
                          const gchar *name,
                          const gchar *value )
 {
+gchar * norm_name   = NULL;
+gchar * simple_name = NULL;
 //  if ( strcmp( name, "name" ) == 0 )
 //    {
 //      if (NULL != widget->name) 
@@ -7412,6 +7501,22 @@ g2c_widget_set_property( g2cWidget *widget,
       proplist_add(widget, name, value);
     
     }
+  if ( strcmp( name, "resource" ) == 0 )  {
+      
+      /*  add to list of image files to put in a GResource XML file */
+      
+      norm_name = g_strdup(value);
+      simple_name = strrchr(g_strdelimit(norm_name, "\\", '/'), '/');
+      if (simple_name != NULL) {
+          CURRENT_PROJECT->resource_list = g_list_append(CURRENT_PROJECT->resource_list, 
+                  (gpointer) g_strdup(simple_name + 1));
+      } else {
+          CURRENT_PROJECT->resource_list = g_list_append(CURRENT_PROJECT->resource_list, 
+                  (gpointer) g_strdup(g_strdelimit(norm_name, "\\", '/') ) );
+      }
+      g_free( norm_name );
+      
+  }
 }
 
 gchar *
@@ -8284,15 +8389,9 @@ g2c_widget_create_temp_declaration_cb( gpointer data,
       }
   }
   if (widget->css_classes != NULL) {
-      GList *css_class =  g_list_first(widget->css_classes);
-      gint i = 0;
-      while (css_class != NULL) {
-         i++;
-         fprintf( CURRENT_FILE,
-               "GtkCssProvider *%s_provider_%02d = gtk_css_provider_new ();\n",
-               widget->name, i );
-         css_class = css_class->next;
-      }
+      fprintf( CURRENT_FILE,
+               "GtkCssProvider *%s_provider = gtk_css_provider_new ();\n",
+               widget->name);       
   }
 
 }

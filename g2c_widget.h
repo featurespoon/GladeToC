@@ -32,6 +32,8 @@ typedef struct tag_g2cBoxPacking
     guint    padding;
     gboolean homogeneous;
     g2cPackDirection pack_type;
+    gboolean secondary;    /*  applies to children of GtkButtonBox  */
+    gboolean non_homogeneous;
   }
 g2cBoxPacking;
 
@@ -168,7 +170,7 @@ g2cColdata;
 
 typedef struct tag_g2cProject
   {
-    GHashTable *properties;
+//    GHashTable *properties;
     GList      *top_level_widgets;
     GList      *dialogue_widgets;
     g2cWidget  *main_widget;
@@ -180,14 +182,12 @@ typedef struct tag_g2cProject
     gchar      *resource_file;
     gchar      *pixmaps_directory;
     gboolean    gettext_support;
-    //gboolean    gnome_support;
-    //gboolean    gnome_help_support;
     gboolean    output_main_file;
     gboolean    output_support_files;
     gboolean    output_build_files;
-    //gboolean    has_bonobo_controls;
     gboolean    gen_cmake;
     gboolean    no_parsing;
+    GList      *resource_list;
   }
 g2cProject;
 
